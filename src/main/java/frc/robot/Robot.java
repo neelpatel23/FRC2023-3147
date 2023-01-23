@@ -11,34 +11,23 @@ import edu.wpi.first.wpilibj.motorcontrol.MotorControllerGroup;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
-
-import java.util.concurrent.CancellationException;
-
+import edu.wpi.first.networktables.*;
 import com.revrobotics.CANSparkMax;
-import com.revrobotics.CANSparkMaxLowLevel;
 import com.revrobotics.CANSparkMax.IdleMode;
 import com.revrobotics.CANSparkMaxLowLevel.MotorType;
 
 public class Robot extends TimedRobot {
   private Command m_autonomousCommand;
-
   private RobotContainer m_robotContainer;
-
   private XboxController controller = new XboxController(0);
-
   private CANSparkMax m_leftFront = new CANSparkMax(1, MotorType.kBrushless);
   private CANSparkMax m_leftRear = new CANSparkMax(3, MotorType.kBrushless);
   private CANSparkMax m_rightFront = new CANSparkMax(2, MotorType.kBrushless);
   private CANSparkMax m_rightRear = new CANSparkMax(4, MotorType.kBrushless);
-
   private MotorControllerGroup m_left = new MotorControllerGroup(m_leftFront, m_leftRear);
   private MotorControllerGroup m_right = new MotorControllerGroup(m_rightFront, m_rightRear);
-
   private double DriveXValue;
   private double DriveYValue;
-
-  
-  
   private DifferentialDrive m_drive = new DifferentialDrive(m_left, m_right);
 
   /**
