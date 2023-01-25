@@ -29,20 +29,22 @@ public class Robot extends TimedRobot {
   private double DriveXValue;
   private double DriveYValue;
   private DifferentialDrive m_drive = new DifferentialDrive(m_left, m_right);
+  private boolean m_LimelightHasValidTarget = false;
+  private double m_LimelightDriveCommand = 0.0;
+  private double m_LimelightSteerCommand = 0.0;
 
-  /**
-   * This function is run when the robot is first started up and should be used for any
-   * initialization code.
-   */
   @Override
   public void robotInit() {
-    // Instantiate our RobotContainer.  This will perform all our button bindings, and put our
-    // autonomous chooser on the dashboard.
     m_robotContainer = new RobotContainer();
     m_leftFront.setIdleMode(IdleMode.kCoast);
     m_leftRear.setIdleMode(IdleMode.kCoast);
     m_rightFront.setIdleMode(IdleMode.kCoast);
     m_rightRear.setIdleMode(IdleMode.kCoast);
+    //m_leftFront.set(0.001);
+    //m_leftRear.set(0.001);
+    //m_rightFront.set(0.001);
+    //m_rightRear.set(0.001);
+
     //m_left.setInverted(true);
   }
 
@@ -54,20 +56,7 @@ public class Robot extends TimedRobot {
    * SmartDashboard integrated updating.
    */
   @Override
-  public void robotPeriodic() {
-    // Runs the Scheduler.  This is responsible for polling buttons, adding newly-scheduled
-    // commands, running already-scheduled commands, removing finished or interrupted commands,
-    // and running subsystem periodic() methods.  This must be called from the robot's periodic
-    // block in order for anything in the Command-based framework to work.
-    CommandScheduler.getInstance().run();
-  }
-
-  /** This function is called once each time the robot enters Disabled mode. */
-  @Override
-  public void disabledInit() {}
-
-  @Override
-  public void disabledPeriodic() {}
+  public void robotPeriodic() {CommandScheduler.getInstance().run();}
 
   /** This autonomous runs the autonomous command selected by your {@link RobotContainer} class. */
   @Override
@@ -98,35 +87,88 @@ public class Robot extends TimedRobot {
   /** This function is called periodically during operator control. */
   @Override
   public void teleopPeriodic() {
+    // Updating Dashboard Data
     SmartDashboard.putNumber("DriveXValue", DriveXValue);
-    DriveXValue = checkDeadband(controller.getLeftX());
-    DriveYValue = checkDeadband(controller.getLeftY());
     SmartDashboard.putNumber("Controller X", controller.getLeftX());
     SmartDashboard.putNumber("Controller Y", controller.getLeftY());
     SmartDashboard.putNumber("DriveXValue", DriveXValue);
     SmartDashboard.putNumber("DriveYValue", DriveYValue);
-    
+    // Deadbands and Controller
+    DriveXValue = checkDeadband(controller.getLeftX());
+    DriveYValue = checkDeadband(controller.getLeftY());
+    // Network Tables (Info)
+    double tv = NetworkTableInstance.getDefault().getTable("limelight").getEntry("tv").getDouble(0.0);
+    double tx = NetworkTableInstance.getDefault().getTable("limelight").getEntry("tx").getDouble(0.0);
+    double ty = NetworkTableInstance.getDefault().getTable("limelight").getEntry("ty").getDouble(0.0);
+    double ta = NetworkTableInstance.getDefault().getTable("limelight").getEntry("ta").getDouble(0.0);
+    NetworkTableEntry led = NetworkTableInstance.getDefault().getTable("limelight").getEntry("ledMode");
+    NetworkTableEntry Z = NetworkTableInstance.getDefault().getTable("limelight").getEntry("Results");
+    NetworkTableInstance.getDefault();
+    SmartDashboard.putNumber("TV (Limelight)", tv);
+    SmartDashboard.putNumber("TX (Limelight)", tx);
+    SmartDashboard.putNumber("TY (Limelight)", ty);
+    SmartDashboard.putNumber("TA (Limelight)", ta);
+    System.out.print(Z);
+
+    //10.31.47.11:5807 JSON Dump
+    // double [] areas = Z.get();
+
+    // System.out.print("areas: ");
+
+    // for (double area : areas) {
+    //   System.out.print(area + " ");
+    // }
+    // System.out.println();
+    // System.out.print(JSON);
+    // while ((tv == 1) && (ta > 5.0)) {
+    //   if(ta > 5.0){
+    //     m_drive.arcadeDrive(DriveXValue, 1.0);
+    //   }
+    //  m_drive.arcadeDrive(DriveXValue,   )
+    // }
+    // m_drive.arcadeDrive(DriveXValue, DriveYValue, true);
     m_drive.arcadeDrive(DriveXValue, DriveYValue, true);
+    if (tv == 1) {
+      led.setNumber(3);
+    }
+    else {
+      led.setNumber(1);
+    }
   }
 
-  @Override
-  public void testInit() {
-    // Cancels all running commands at the start of test mode.
-    CommandScheduler.getInstance().cancelAll();
-  }
 
-  /** This function is called periodically during test mode. */
-  @Override
-  public void testPeriodic() {}
 
   /** This function is called once when the robot is first started up. */
-  @Override
-  public void simulationInit() {}
+  public void Update_Limelight_Tracking() {
+    final double STEER_K = 0.001;
+    final double DRIVE_K = 0.26;
+    final double DESIRED_TARGET_AREA = 6.50;
+    final double MAX_DRIVE = 0.7;
 
-  /** This function is called periodically whilst in simulation. */
-  @Override
-  public void simulationPeriodic() {}
+    double tv = NetworkTableInstance.getDefault().getTable("limelight").getEntry("tv").getDouble(0);
+    double tx = NetworkTableInstance.getDefault().getTable("limelight").getEntry("tx").getDouble(0);
+    double ty = NetworkTableInstance.getDefault().getTable("limelight").getEntry("ty").getDouble(0);
+    double ta = NetworkTableInstance.getDefault().getTable("limelight").getEntry("ta").getDouble(0);
 
+    if (tv < 1.0) {
+      m_LimelightHasValidTarget = false;
+      m_LimelightDriveCommand = 0.0;
+      m_LimelightSteerCommand = 0.0;
+      return;
+    }
+    m_LimelightHasValidTarget = true;
+
+    double steer_cmd = tx * STEER_K;
+    m_LimelightSteerCommand = steer_cmd;
+
+    double drive_cmd = ((5.0 - ta)*-1) * DRIVE_K;
+
+    if (drive_cmd > MAX_DRIVE)
+    {
+      drive_cmd = MAX_DRIVE;
+    }
+    m_LimelightDriveCommand = drive_cmd;
+  }
 
   public double checkDeadband(double input)
   {
@@ -137,4 +179,32 @@ public class Robot extends TimedRobot {
     
     return 0;
   }
+
+
+
+
+
+
+
+
+  /** This function is called once each time the robot enters Disabled mode. */
+  @Override
+  public void disabledInit() {}
+
+  @Override
+  public void disabledPeriodic() {}
+
+  @Override
+  public void testInit() {CommandScheduler.getInstance().cancelAll();}
+
+  /** This function is called periodically during test mode. */
+  @Override
+  public void testPeriodic() {}
+
+  @Override
+  public void simulationInit() {}
+
+  /** This function is called periodically whilst in simulation. */
+  @Override
+  public void simulationPeriodic() {}
 }
