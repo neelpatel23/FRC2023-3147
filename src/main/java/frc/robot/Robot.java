@@ -15,6 +15,11 @@ import edu.wpi.first.networktables.*;
 import com.revrobotics.CANSparkMax;
 import com.revrobotics.CANSparkMax.IdleMode;
 import com.revrobotics.CANSparkMaxLowLevel.MotorType;
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 
 public class Robot extends TimedRobot {
   private Command m_autonomousCommand;
@@ -73,6 +78,8 @@ public class Robot extends TimedRobot {
   @Override
   public void autonomousPeriodic() {}
 
+  DoubleArraySubscriber areasSub;
+
   @Override
   public void teleopInit() {
     // This makes sure that the autonomous stops running when
@@ -82,6 +89,8 @@ public class Robot extends TimedRobot {
     if (m_autonomousCommand != null) {
       m_autonomousCommand.cancel();
     }
+    NetworkTable table = NetworkTableInstance.getDefault().getTable("limelight");
+    areasSub = table.getDoubleArrayTopic("json").subscribe(new double[] {});
   }
 
   /** This function is called periodically during operator control. */
@@ -101,15 +110,24 @@ public class Robot extends TimedRobot {
     double tx = NetworkTableInstance.getDefault().getTable("limelight").getEntry("tx").getDouble(0.0);
     double ty = NetworkTableInstance.getDefault().getTable("limelight").getEntry("ty").getDouble(0.0);
     double ta = NetworkTableInstance.getDefault().getTable("limelight").getEntry("ta").getDouble(0.0);
+    String json = NetworkTableInstance.getDefault().getTable("limelight").getEntry("json").toString();
     NetworkTableEntry led = NetworkTableInstance.getDefault().getTable("limelight").getEntry("ledMode");
-    NetworkTableEntry Z = NetworkTableInstance.getDefault().getTable("limelight").getEntry("Results");
-    NetworkTableInstance.getDefault();
+
     SmartDashboard.putNumber("TV (Limelight)", tv);
     SmartDashboard.putNumber("TX (Limelight)", tx);
     SmartDashboard.putNumber("TY (Limelight)", ty);
     SmartDashboard.putNumber("TA (Limelight)", ta);
-    System.out.print(Z);
+    // double[] areas = areasSub.get();
 
+    // System.out.print("areas: " );
+    // for (double area: areas) {
+    //   System.out.print(area + " ");
+    //   areas.toString();
+    // }
+
+    // System.out.println();
+    System.out.print(json);
+    
     //10.31.47.11:5807 JSON Dump
     // double [] areas = Z.get();
 
@@ -135,9 +153,6 @@ public class Robot extends TimedRobot {
       led.setNumber(1);
     }
   }
-
-
-
   /** This function is called once when the robot is first started up. */
   public void Update_Limelight_Tracking() {
     final double STEER_K = 0.001;
