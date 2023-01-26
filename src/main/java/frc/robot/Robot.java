@@ -3,7 +3,6 @@
 // the WPILib BSD license file in the root directory of this project.
 
 package frc.robot;
-
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
@@ -19,19 +18,22 @@ import com.revrobotics.CANSparkMaxLowLevel.MotorType;
 public class Robot extends TimedRobot {
   private Command m_autonomousCommand;
   private RobotContainer m_robotContainer;
+  // Controllers
   private XboxController controller = new XboxController(0);
+  private XboxController controller1 = new XboxController(1);
+  // Motor Controllers
   private CANSparkMax m_leftFront = new CANSparkMax(1, MotorType.kBrushless);
   private CANSparkMax m_leftRear = new CANSparkMax(3, MotorType.kBrushless);
   private CANSparkMax m_rightFront = new CANSparkMax(2, MotorType.kBrushless);
   private CANSparkMax m_rightRear = new CANSparkMax(4, MotorType.kBrushless);
+  // Moter ControllerGroups (Right and Left)
   private MotorControllerGroup m_left = new MotorControllerGroup(m_leftFront, m_leftRear);
   private MotorControllerGroup m_right = new MotorControllerGroup(m_rightFront, m_rightRear);
+  // Drive Mode
+  private DifferentialDrive m_drive = new DifferentialDrive(m_left, m_right);
+  
   private double DriveXValue;
   private double DriveYValue;
-  private DifferentialDrive m_drive = new DifferentialDrive(m_left, m_right);
-  private boolean m_LimelightHasValidTarget = false;
-  private double m_LimelightDriveCommand = 0.0;
-  private double m_LimelightSteerCommand = 0.0;
 
   @Override
   public void robotInit() {
@@ -149,25 +151,7 @@ public class Robot extends TimedRobot {
     double tx = NetworkTableInstance.getDefault().getTable("limelight").getEntry("tx").getDouble(0);
     double ty = NetworkTableInstance.getDefault().getTable("limelight").getEntry("ty").getDouble(0);
     double ta = NetworkTableInstance.getDefault().getTable("limelight").getEntry("ta").getDouble(0);
-
-    if (tv < 1.0) {
-      m_LimelightHasValidTarget = false;
-      m_LimelightDriveCommand = 0.0;
-      m_LimelightSteerCommand = 0.0;
-      return;
-    }
-    m_LimelightHasValidTarget = true;
-
-    double steer_cmd = tx * STEER_K;
-    m_LimelightSteerCommand = steer_cmd;
-
-    double drive_cmd = ((5.0 - ta)*-1) * DRIVE_K;
-
-    if (drive_cmd > MAX_DRIVE)
-    {
-      drive_cmd = MAX_DRIVE;
-    }
-    m_LimelightDriveCommand = drive_cmd;
+  
   }
 
   public double checkDeadband(double input)
