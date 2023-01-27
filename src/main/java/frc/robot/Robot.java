@@ -15,11 +15,7 @@ import edu.wpi.first.networktables.*;
 import com.revrobotics.CANSparkMax;
 import com.revrobotics.CANSparkMax.IdleMode;
 import com.revrobotics.CANSparkMaxLowLevel.MotorType;
-import java.io.IOException;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
+
 
 public class Robot extends TimedRobot {
   private Command m_autonomousCommand;
@@ -34,17 +30,27 @@ public class Robot extends TimedRobot {
   private double DriveXValue;
   private double DriveYValue;
   private DifferentialDrive m_drive = new DifferentialDrive(m_left, m_right);
-  private boolean m_LimelightHasValidTarget = false;
-  private double m_LimelightDriveCommand = 0.0;
-  private double m_LimelightSteerCommand = 0.0;
+
+  private NetworkTableInstance nti;
+  double tv;
+  double tx;
+  double ty;
+  double ta;
+  NetworkTableEntry json;
+  NetworkTableEntry led;
+  String jsonin;
+  Double zDistance = 0.0;
+
+  
 
   @Override
   public void robotInit() {
     m_robotContainer = new RobotContainer();
-    m_leftFront.setIdleMode(IdleMode.kCoast);
-    m_leftRear.setIdleMode(IdleMode.kCoast);
-    m_rightFront.setIdleMode(IdleMode.kCoast);
-    m_rightRear.setIdleMode(IdleMode.kCoast);
+    m_leftFront.setIdleMode(IdleMode.kBrake);
+    m_leftRear.setIdleMode(IdleMode.kBrake);
+    m_rightFront.setIdleMode(IdleMode.kBrake);
+    m_rightRear.setIdleMode(IdleMode.kBrake);
+    nti = NetworkTableInstance.getDefault();
     //m_leftFront.set(0.001);
     //m_leftRear.set(0.001);
     //m_rightFront.set(0.001);
@@ -78,8 +84,6 @@ public class Robot extends TimedRobot {
   @Override
   public void autonomousPeriodic() {}
 
-  DoubleArraySubscriber areasSub;
-
   @Override
   public void teleopInit() {
     // This makes sure that the autonomous stops running when
@@ -89,8 +93,6 @@ public class Robot extends TimedRobot {
     if (m_autonomousCommand != null) {
       m_autonomousCommand.cancel();
     }
-    NetworkTable table = NetworkTableInstance.getDefault().getTable("limelight");
-    areasSub = table.getDoubleArrayTopic("json").subscribe(new double[] {});
   }
 
   /** This function is called periodically during operator control. */
@@ -106,85 +108,28 @@ public class Robot extends TimedRobot {
     DriveXValue = checkDeadband(controller.getLeftX());
     DriveYValue = checkDeadband(controller.getLeftY());
     // Network Tables (Info)
-    double tv = NetworkTableInstance.getDefault().getTable("limelight").getEntry("tv").getDouble(0.0);
-    double tx = NetworkTableInstance.getDefault().getTable("limelight").getEntry("tx").getDouble(0.0);
-    double ty = NetworkTableInstance.getDefault().getTable("limelight").getEntry("ty").getDouble(0.0);
-    double ta = NetworkTableInstance.getDefault().getTable("limelight").getEntry("ta").getDouble(0.0);
-    String json = NetworkTableInstance.getDefault().getTable("limelight").getEntry("json").toString();
-    NetworkTableEntry led = NetworkTableInstance.getDefault().getTable("limelight").getEntry("ledMode");
+
+    NetworkTable ntLimelight = nti.getTable("limelight");
+    tv = ntLimelight.getEntry("tv").getDouble(0.0);
+    tx = ntLimelight.getEntry("tx").getDouble(0.0);
+    ty = ntLimelight.getEntry("ty").getDouble(0.0);
+    ta = ntLimelight.getEntry("ta").getDouble(0.0);
 
     SmartDashboard.putNumber("TV (Limelight)", tv);
     SmartDashboard.putNumber("TX (Limelight)", tx);
     SmartDashboard.putNumber("TY (Limelight)", ty);
     SmartDashboard.putNumber("TA (Limelight)", ta);
-    // double[] areas = areasSub.get();
-
-    // System.out.print("areas: " );
-    // for (double area: areas) {
-    //   System.out.print(area + " ");
-    //   areas.toString();
-    // }
-
-    // System.out.println();
-    System.out.print(json);
     
-    //10.31.47.11:5807 JSON Dump
-    // double [] areas = Z.get();
+    double z = getZDistance();
+    do {
+      m_drive.tankDrive(0.10, -0.10, false);
+      z = getZDistance();
+    } while (z < -0.58);
 
-    // System.out.print("areas: ");
-
-    // for (double area : areas) {
-    //   System.out.print(area + " ");
-    // }
-    // System.out.println();
-    // System.out.print(JSON);
-    // while ((tv == 1) && (ta > 5.0)) {
-    //   if(ta > 5.0){
-    //     m_drive.arcadeDrive(DriveXValue, 1.0);
-    //   }
-    //  m_drive.arcadeDrive(DriveXValue,   )
-    // }
-    // m_drive.arcadeDrive(DriveXValue, DriveYValue, true);
     m_drive.arcadeDrive(DriveXValue, DriveYValue, true);
-    if (tv == 1) {
-      led.setNumber(3);
-    }
-    else {
-      led.setNumber(1);
-    }
+    
   }
   /** This function is called once when the robot is first started up. */
-  public void Update_Limelight_Tracking() {
-    final double STEER_K = 0.001;
-    final double DRIVE_K = 0.26;
-    final double DESIRED_TARGET_AREA = 6.50;
-    final double MAX_DRIVE = 0.7;
-
-    double tv = NetworkTableInstance.getDefault().getTable("limelight").getEntry("tv").getDouble(0);
-    double tx = NetworkTableInstance.getDefault().getTable("limelight").getEntry("tx").getDouble(0);
-    double ty = NetworkTableInstance.getDefault().getTable("limelight").getEntry("ty").getDouble(0);
-    double ta = NetworkTableInstance.getDefault().getTable("limelight").getEntry("ta").getDouble(0);
-
-    if (tv < 1.0) {
-      m_LimelightHasValidTarget = false;
-      m_LimelightDriveCommand = 0.0;
-      m_LimelightSteerCommand = 0.0;
-      return;
-    }
-    m_LimelightHasValidTarget = true;
-
-    double steer_cmd = tx * STEER_K;
-    m_LimelightSteerCommand = steer_cmd;
-
-    double drive_cmd = ((5.0 - ta)*-1) * DRIVE_K;
-
-    if (drive_cmd > MAX_DRIVE)
-    {
-      drive_cmd = MAX_DRIVE;
-    }
-    m_LimelightDriveCommand = drive_cmd;
-  }
-
   public double checkDeadband(double input)
   {
     if(input >= Constants.DEADBAND || input <= -Constants.DEADBAND)
@@ -198,9 +143,32 @@ public class Robot extends TimedRobot {
 
 
 
-
-
-
+  public Double getZDistance() {
+    NetworkTable ntLimelight = nti.getTable("limelight");
+    led = ntLimelight.getEntry("ledMode");
+    json = ntLimelight.getEntry("json");
+    if(tv == 1 && json.isValid())
+    {
+        led.setNumber(3);
+        
+      if(json.getString("").indexOf("t6c_ts") > 0)
+      {
+        jsonin = json.getString("").substring(json.getString("").indexOf("t6c_ts"));
+        jsonin = jsonin.substring(jsonin.indexOf("["), jsonin.indexOf("]"));
+        jsonin = jsonin.replace("[","").replace("]", "");
+        zDistance = Double.parseDouble(jsonin.split(",")[2]);
+        SmartDashboard.putNumber("t6c_ts:z", zDistance);
+      }
+      else{
+        jsonin = "";
+      }
+    }
+    else
+    {
+      led.setNumber(1);
+    }
+    return zDistance;
+  }
 
   /** This function is called once each time the robot enters Disabled mode. */
   @Override
