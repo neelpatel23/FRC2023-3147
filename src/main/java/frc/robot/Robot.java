@@ -1,35 +1,47 @@
-// Copyright (c) FIRST and other WPILib contributors.
-// Open Source Software; you can modify and/or share it under the terms of
-// the WPILib BSD license file in the root directory of this project.
-
 package frc.robot;
 
+import edu.wpi.first.wpilibj.Compressor;
+import edu.wpi.first.wpilibj.DoubleSolenoid;
+import edu.wpi.first.wpilibj.Joystick;
+import edu.wpi.first.wpilibj.PneumaticsModuleType;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.XboxController;
+import edu.wpi.first.wpilibj.DoubleSolenoid.Value;
+import edu.wpi.first.wpilibj.I2C.Port;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import edu.wpi.first.wpilibj.motorcontrol.MotorControllerGroup;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
+import frc.robot.Constants.HardwareCAN;
+import frc.robot.Constants.Motors;
+import frc.robot.Constants.OperatorConstants;
 import edu.wpi.first.networktables.*;
 import com.revrobotics.CANSparkMax;
 import com.revrobotics.CANSparkMax.IdleMode;
 import com.revrobotics.CANSparkMaxLowLevel.MotorType;
+import com.kauailabs.navx.frc.AHRS;
 
 
-public class Robot extends TimedRobot {
+public class Robot extends TimedRobot { 
+  private Compressor comp = new Compressor(HardwareCAN.PneumaticHUB, PneumaticsModuleType.REVPH);
+  private DoubleSolenoid sold = new DoubleSolenoid(HardwareCAN.PneumaticHUB, PneumaticsModuleType.REVPH, 6, 7);
   private Command m_autonomousCommand;
   private RobotContainer m_robotContainer;
-  private XboxController controller = new XboxController(0);
-  private CANSparkMax m_leftFront = new CANSparkMax(1, MotorType.kBrushless);
-  private CANSparkMax m_leftRear = new CANSparkMax(3, MotorType.kBrushless);
-  private CANSparkMax m_rightFront = new CANSparkMax(2, MotorType.kBrushless);
-  private CANSparkMax m_rightRear = new CANSparkMax(4, MotorType.kBrushless);
+  private XboxController controller = new XboxController(OperatorConstants.kDriverControllerPort);
+  private Joystick Usb1 = new Joystick(OperatorConstants.kUsbController1);
+  private Joystick Usb2 = new Joystick(OperatorConstants.kUsbController2);
+  private CANSparkMax m_leftFront = new CANSparkMax(Motors.CanID1, MotorType.kBrushless);
+  private CANSparkMax m_leftRear = new CANSparkMax(Motors.CanID3, MotorType.kBrushless);
+  private CANSparkMax m_rightFront = new CANSparkMax(Motors.CanID2, MotorType.kBrushless);
+  private CANSparkMax m_rightRear = new CANSparkMax(Motors.CanID4, MotorType.kBrushless);
   private MotorControllerGroup m_left = new MotorControllerGroup(m_leftFront, m_leftRear);
   private MotorControllerGroup m_right = new MotorControllerGroup(m_rightFront, m_rightRear);
   private double DriveXValue;
   private double DriveYValue;
   private DifferentialDrive m_drive = new DifferentialDrive(m_left, m_right);
+
+  private AHRS ahrs = new AHRS(Port.kMXP);
 
   private NetworkTableInstance nti;
   double tv;
@@ -51,12 +63,7 @@ public class Robot extends TimedRobot {
     m_rightFront.setIdleMode(IdleMode.kBrake);
     m_rightRear.setIdleMode(IdleMode.kBrake);
     nti = NetworkTableInstance.getDefault();
-    //m_leftFront.set(0.001);
-    //m_leftRear.set(0.001);
-    //m_rightFront.set(0.001);
-    //m_rightRear.set(0.001);
-
-    //m_left.setInverted(true);
+    comp.enableDigital();
   }
 
   /**
@@ -73,8 +80,6 @@ public class Robot extends TimedRobot {
   @Override
   public void autonomousInit() {
     m_autonomousCommand = m_robotContainer.getAutonomousCommand();
-
-    // schedule the autonomous command (example)
     if (m_autonomousCommand != null) {
       m_autonomousCommand.schedule();
     }
@@ -98,6 +103,9 @@ public class Robot extends TimedRobot {
   /** This function is called periodically during operator control. */
   @Override
   public void teleopPeriodic() {
+    SmartDashboard.putNumber("Yaw", ahrs.getYaw());
+    SmartDashboard.putNumber("Pitch", ahrs.getPitch());
+    SmartDashboard.putNumber("Roll", ahrs.getRoll());
     // Updating Dashboard Data
     SmartDashboard.putNumber("DriveXValue", DriveXValue);
     SmartDashboard.putNumber("Controller X", controller.getLeftX());
@@ -108,7 +116,7 @@ public class Robot extends TimedRobot {
     DriveXValue = checkDeadband(controller.getLeftX());
     DriveYValue = checkDeadband(controller.getLeftY());
     // Network Tables (Info)
-
+    
     NetworkTable ntLimelight = nti.getTable("limelight");
     tv = ntLimelight.getEntry("tv").getDouble(0.0);
     tx = ntLimelight.getEntry("tx").getDouble(0.0);
@@ -119,6 +127,23 @@ public class Robot extends TimedRobot {
     SmartDashboard.putNumber("TX (Limelight)", tx);
     SmartDashboard.putNumber("TY (Limelight)", ty);
     SmartDashboard.putNumber("TA (Limelight)", ta);
+
+
+    // System.out.print(Values);
+
+   if (Usb2.getRawButtonPressed(1)) {
+    System.out.print("Brake");
+   }
+   if (Usb2.getRawButtonPressed(2)) {
+    System.out.print("Coast");
+   }
+   if (Usb1.getRawButtonPressed(1)) {
+    System.out.print("forward");
+    sold.set(Value.kForward);
+   } 
+   if (Usb1.getRawButtonPressed(2)) {
+    sold.set(Value.kReverse);
+   } 
     
     double z = getZDistance();
     do {
