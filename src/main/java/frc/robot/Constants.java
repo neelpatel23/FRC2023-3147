@@ -14,10 +14,18 @@ public final class Constants {
     public static final int CanID3 = 3;
     public static final int CanID4 = 4;
   }
+  public static class ArmMotors {
+    public static final int CANID5 = 5;
+    public static final int CANID6 = 6;
+  }
   public static class HardwareCAN {
     // Hardware CANiDs
     public static final int PDU = 10;
     public static final int PneumaticHUB = 11;
+  }
+  public static class PneumaticChannels {
+    public static final int FORWARD = 6;
+    public static final int REVERSE = 7;
   }
 
   public static double DEADBAND = .2;

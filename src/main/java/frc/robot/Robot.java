@@ -1,50 +1,57 @@
 package frc.robot;
 
-import edu.wpi.first.wpilibj.Compressor;
-import edu.wpi.first.wpilibj.DoubleSolenoid;
+// User Controls
 import edu.wpi.first.wpilibj.Joystick;
-import edu.wpi.first.wpilibj.PneumaticsModuleType;
+// FRC
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.XboxController;
-import edu.wpi.first.wpilibj.DoubleSolenoid.Value;
-import edu.wpi.first.wpilibj.I2C.Port;
+import edu.wpi.first.wpilibj.GenericHID.RumbleType;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
-import frc.robot.Constants.HardwareCAN;
 import frc.robot.Constants.OperatorConstants;
+// Drive(s)
 import frc.robot.systems.DriveTrain;
-import frc.robot.systems.AutoAlign;
-import edu.wpi.first.networktables.*;
-import com.revrobotics.CANSparkMax.IdleMode;
-import com.kauailabs.navx.frc.AHRS;
+// Pneumatics
+import frc.robot.systems.Pneumatics;
+import frc.robot.systems.hardware.Limelight;
+import frc.robot.systems.hardware.NavX;
 
 
 
 public class Robot extends TimedRobot { 
   private DriveTrain drive = new DriveTrain();
-  // private AutoAlign align = new AutoAlign();
-  private Compressor comp = new Compressor(HardwareCAN.PneumaticHUB, PneumaticsModuleType.REVPH);
-  private DoubleSolenoid sold = new DoubleSolenoid(HardwareCAN.PneumaticHUB, PneumaticsModuleType.REVPH, 6, 7);
+  private Limelight limeLight = new Limelight();
+  private Pneumatics pneumatics = new Pneumatics();
+  private NavX navx = new NavX();
+  public final XboxController controller = new XboxController(OperatorConstants.kDriverControllerPort);
   private Command m_autonomousCommand;
   private RobotContainer m_robotContainer;
-  private XboxController controller = new XboxController(OperatorConstants.kDriverControllerPort);
   private Joystick Usb1 = new Joystick(OperatorConstants.kUsbController1);
   private Joystick Usb2 = new Joystick(OperatorConstants.kUsbController2);
   private double DriveXValue;
   private double DriveYValue;
+  private double ArmSpeed;
+  private double zDistance;
+  private double updatedSteer;
+  private double updatedDrive;
+  private boolean JoystickControlEnable = true;
 
-  private AHRS ahrs = new AHRS(Port.kMXP);
   
 
   @Override
   public void robotInit() {
     m_robotContainer = new RobotContainer();
-    drive.m_leftFront.setIdleMode(IdleMode.kBrake);
-    drive.m_leftRear.setIdleMode(IdleMode.kBrake);
-    drive.m_rightFront.setIdleMode(IdleMode.kBrake);
-    drive.m_rightRear.setIdleMode(IdleMode.kBrake);
-    comp.enableDigital();
+    drive.setBrakeIdle();
+    pneumatics.enableCompressor();
+    limeLight.initiateLimelight();
+
+    SmartDashboard.putNumber("Yaw", navx.getYawMotion());
+    SmartDashboard.putNumber("Pitch", navx.getPitchMotion());
+    SmartDashboard.putNumber("Roll", navx.getRollMotion());
+    SmartDashboard.putNumber("DriveXValue", DriveXValue);
+    SmartDashboard.putNumber("DriveYValue", DriveYValue);
+    SmartDashboard.putString("Drive Mode", "Brake");
   }
 
   @Override
@@ -72,43 +79,115 @@ public class Robot extends TimedRobot {
     if (m_autonomousCommand != null) {
       m_autonomousCommand.cancel();
     }
+
   }
 
   /** This function is called periodically during operator control. */
   @Override
   public void teleopPeriodic() {
-    SmartDashboard.putNumber("Yaw", ahrs.getYaw());
-    SmartDashboard.putNumber("Pitch", ahrs.getPitch());
-    SmartDashboard.putNumber("Roll", ahrs.getRoll());
-    // Updating Dashboard Data
-    SmartDashboard.putNumber("DriveXValue", DriveXValue);
-    SmartDashboard.putNumber("Controller X", controller.getLeftX());
-    SmartDashboard.putNumber("Controller Y", controller.getLeftY());
-    SmartDashboard.putNumber("DriveXValue", DriveXValue);
-    SmartDashboard.putNumber("DriveYValue", DriveYValue);
+    limeLight.updateLimelightDashboard();
     // Deadbands and Controller
+    ArmSpeed = checkDeadband(controller.getRightY());
     DriveXValue = checkDeadband(controller.getLeftX());
     DriveYValue = checkDeadband(controller.getLeftY());
-    // System.out.print(Values);
-
-   if (Usb2.getRawButtonPressed(1)) {
-    System.out.print("Brake");
-   }
-   if (Usb2.getRawButtonPressed(2)) {
-    System.out.print("Coast");
-   }
-   if (Usb1.getRawButtonPressed(1)) {
-    System.out.print("forward");
-    sold.set(Value.kForward);
-   } 
-   if (Usb1.getRawButtonPressed(2)) {
-    sold.set(Value.kReverse);
-   } 
-
-    if (controller.getAButtonPressed()) {
-      // drive.autoAlignDrive();
+    SmartDashboard.putNumber("DriveXValue", DriveXValue);
+    SmartDashboard.putNumber("DriveYValue", DriveYValue);
+    SmartDashboard.putNumber("Yaw", navx.getYawMotion());
+    SmartDashboard.putNumber("Pitch", navx.getPitchMotion());
+    SmartDashboard.putNumber("Roll", navx.getRollMotion());
+    /*
+     * START OF ALL USER BASED CONTROLS
+     */
+    if (Usb1.getRawButtonPressed(1)) {
+      // Driver Cam
+      limeLight.setCurrentPipeline(0.0);
     }
-    drive.Drive(DriveXValue, DriveYValue);
+    if (Usb1.getRawButtonPressed(2)) {
+      // AprilTag
+      limeLight.setCurrentPipeline(1.0);
+    }
+    if (Usb1.getRawButtonPressed(3)) {
+      // Retro-Reflective
+      limeLight.setCurrentPipeline(2.0);
+    }
+    if (Usb1.getRawButtonPressed(4)) {
+      // Yellow Cone
+      limeLight.setCurrentPipeline(3.0);
+    }
+    if (Usb1.getRawButtonPressed(5)) {
+      // Purple Cube
+      limeLight.setCurrentPipeline(4.0);
+    }
+    if (Usb2.getRawButtonPressed(1)) {
+      // Set Motors to Brake
+      drive.setBrakeMode();
+      SmartDashboard.putString("Drive Mode", "Brake");
+    }
+    if (Usb2.getRawButtonPressed(2)) {
+      // Set Motors to Coast
+      drive.setCoastMode();
+      SmartDashboard.putString("Drive Mode", "Coast");
+    }
+    if (Usb2.getRawButtonPressed(3)) {
+      navx.getRollMotion();
+      drive.balanceDrive(navx.autoBalancePositive()[0], navx.autoBalancePositive()[1]);
+    }
+    if (Usb2.getRawButtonPressed(4)) {
+      navx.getRollMotion();
+      drive.balanceDrive(navx.autoBalanceNegative()[0], navx.autoBalanceNegative()[1]);
+    }
+    if(controller.getBButton()) {
+      limeLight.Update_Limelight_Tracking();
+      SmartDashboard.putNumber("DriveCom", limeLight.m_LimelightDriveCommand);
+      SmartDashboard.putNumber("SteerCom", limeLight.m_LimelightSteerCommand);
+      if (limeLight.m_LimelightHasValidTarget)
+      {
+        drive.Drive(limeLight.m_LimelightSteerCommand, limeLight.m_LimelightDriveCommand);
+      }
+      else
+      {
+        drive.Drive(0, 0);
+      }
+    }
+    else
+    {
+      drive.Drive(DriveXValue, DriveYValue);
+      drive.moveArm(ArmSpeed);
+      SmartDashboard.putNumber("Arm", ArmSpeed);
+    }
+    /* ----------------------------------------------------------------------------------------------------- */
+    if (controller.getAButton()) {
+      JoystickControlEnable=false;
+      zDistance = limeLight.getZDistance();
+      if(zDistance < -0.58)
+      //ZDistance < -0.58
+      {
+        //Drive
+        drive.driveToZ();
+      }
+      else
+      {
+        drive.Drive(0, 0);
+        controller.setRumble(RumbleType.kBothRumble,1);
+      }
+    }
+    else
+    {
+      JoystickControlEnable = true;
+      controller.setRumble(RumbleType.kBothRumble,0);
+    }
+
+    if (controller.getRightBumperPressed()) {
+      pneumatics.openClaw();
+    }
+    if (controller.getLeftBumperPressed()) {
+      pneumatics.closeClaw();
+    }
+    
+    if(JoystickControlEnable) {drive.Drive(DriveXValue, DriveYValue);}
+    
+
+    SmartDashboard.putNumber("EncoderValue", drive.getEncoderValue());
     
   }
   /** This function is called once when the robot is first started up. */
@@ -121,6 +200,7 @@ public class Robot extends TimedRobot {
     
     return 0;
   }
+ 
 
   /** This function is called once each time the robot enters Disabled mode. */
   @Override

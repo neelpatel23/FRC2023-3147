@@ -1,81 +1,69 @@
 package frc.robot.systems;
 
-import edu.wpi.first.networktables.NetworkTable;
-import edu.wpi.first.networktables.NetworkTableEntry;
-import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import edu.wpi.first.wpilibj.motorcontrol.MotorControllerGroup;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import frc.robot.Constants.ArmMotors;
 import frc.robot.Constants.Motors;
-import frc.robot.systems.hardware.Limelight;
 
 import com.revrobotics.CANSparkMax;
+import com.revrobotics.CANSparkMax.IdleMode;
 import com.revrobotics.CANSparkMaxLowLevel.MotorType;
 
 
 public class DriveTrain {
-    // Drive Controller
-    // public XboxController mainController = new XboxController(OperatorConstants.kDriverControllerPort);
     // Motors
-    public CANSparkMax m_leftFront = new CANSparkMax(Motors.CanID1, MotorType.kBrushless);
-    public CANSparkMax m_leftRear = new CANSparkMax(Motors.CanID3, MotorType.kBrushless);
-    public CANSparkMax m_rightFront = new CANSparkMax(Motors.CanID2, MotorType.kBrushless);
-    public CANSparkMax m_rightRear = new CANSparkMax(Motors.CanID4, MotorType.kBrushless);
+    public CANSparkMax m_leftFront = new CANSparkMax(Motors.CanID2, MotorType.kBrushless);
+    public CANSparkMax m_leftRear = new CANSparkMax(Motors.CanID4, MotorType.kBrushless);
+    public CANSparkMax m_rightFront = new CANSparkMax(Motors.CanID1, MotorType.kBrushless);
+    public CANSparkMax m_rightRear = new CANSparkMax(Motors.CanID3, MotorType.kBrushless);
+    public CANSparkMax arm_left = new CANSparkMax(ArmMotors.CANID5, MotorType.kBrushless);
+    public CANSparkMax arm_right = new CANSparkMax(ArmMotors.CANID6, MotorType.kBrushless);
     // Controller Groups
     public MotorControllerGroup m_left = new MotorControllerGroup(m_leftFront, m_leftRear);
     public MotorControllerGroup m_right = new MotorControllerGroup(m_rightFront, m_rightRear);
+    public MotorControllerGroup arm_motors = new MotorControllerGroup(arm_left, arm_right);
+
     // Drive Type
     public DifferentialDrive m_drive = new DifferentialDrive(m_left, m_right);
-    public Limelight limeLight = new Limelight();
-    public NetworkTableInstance inst;
-    public NetworkTable ntLimelight;
-    public NetworkTableEntry json;
-    public NetworkTableEntry led;
-    public String jsonin;
-    public Double zDistance = 0.0;
+    // Constant Variables
+
 
     public void Drive(double XDrive, double YDrive) {
-        m_drive.arcadeDrive(XDrive, YDrive);
+        m_drive.arcadeDrive((XDrive), (YDrive));
     }
-    public void autoAlignDrive() {
-        double tv = limeLight.getTV();
-        double ta = limeLight.getTA();
-        double tx = limeLight.getTX();
-        double ty = limeLight.getTY();
-    
-        double z = getZDistance();
-        do {
-            m_drive.tankDrive(0.10, -0.10, false);
-            // autoDrive.m_drive.tankDrive(0.10, -0.10, false);
-            z = getZDistance();
-        } while (z < -0.58);
+    public void setBrakeIdle() {
+        m_leftFront.setIdleMode(IdleMode.kBrake);
+        m_leftRear.setIdleMode(IdleMode.kBrake);
+        m_rightFront.setIdleMode(IdleMode.kBrake);
+        m_rightRear.setIdleMode(IdleMode.kBrake);
     }
-        public Double getZDistance() {
-        NetworkTable ntLimelight = inst.getTable("limelight");
-        double tv = limeLight.getTV();
-        led = ntLimelight.getEntry("ledMode");
-        json = ntLimelight.getEntry("json");
-        if(tv == 1 && json.isValid())
-        {
-            led.setNumber(3);
-            
-            if(json.getString("").indexOf("t6c_ts") > 0)
-            {
-            jsonin = json.getString("").substring(json.getString("").indexOf("t6c_ts"));
-            jsonin = jsonin.substring(jsonin.indexOf("["), jsonin.indexOf("]"));
-            jsonin = jsonin.replace("[","").replace("]", "");
-            zDistance = Double.parseDouble(jsonin.split(",")[2]);
-            SmartDashboard.putNumber("t6c_ts:z", zDistance);
-            }
-            else{
-            jsonin = "";
-            }
-        }
-        else
-        {
-            led.setNumber(1);
-        }
-        return zDistance;
-        }
+    public void setBrakeMode() {
+        m_leftFront.setIdleMode(IdleMode.kBrake);
+        m_leftRear.setIdleMode(IdleMode.kBrake);
+        m_rightFront.setIdleMode(IdleMode.kBrake);
+        m_rightRear.setIdleMode(IdleMode.kBrake);
+    }
+    public void setCoastMode() {
+        m_leftFront.setIdleMode(IdleMode.kCoast);
+        m_leftRear.setIdleMode(IdleMode.kCoast);
+        m_rightFront.setIdleMode(IdleMode.kCoast);
+        m_rightRear.setIdleMode(IdleMode.kCoast);
+    }
     
+    public void driveToZ() {
+         m_drive.tankDrive(0.25, -0.25);
+    } 
+    public void balanceDrive(double left, double right) {
+        m_drive.tankDrive(left, right);
+    }
+
+    public void moveArm(double speed) {
+        arm_left.setInverted(true);
+        arm_left.set(speed);
+        arm_right.set(speed);
+    }
+
+    public double getEncoderValue() {
+        return m_leftFront.getEncoder().getPosition();
+    }
 }
