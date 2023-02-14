@@ -53,6 +53,13 @@ public class DriveTrain {
     public void driveToZ() {
          m_drive.tankDrive(0.25, -0.25);
     } 
+    
+    public void autoBalanceForward() {
+        m_drive.tankDrive(0.10, -0.10);
+    }
+    public void autoBalanceBackward() {
+        m_drive.tankDrive(-0.10, 0.10);
+    }
     public void balanceDrive(double left, double right) {
         m_drive.tankDrive(left, right);
     }
