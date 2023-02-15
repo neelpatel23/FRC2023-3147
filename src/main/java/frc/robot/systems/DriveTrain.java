@@ -55,10 +55,10 @@ public class DriveTrain {
     } 
     
     public void autoBalanceForward() {
-        m_drive.tankDrive(0.10, -0.10);
+        m_drive.tankDrive(0.30, -0.30);
     }
     public void autoBalanceBackward() {
-        m_drive.tankDrive(-0.10, 0.10);
+        m_drive.tankDrive(-0.30, 0.30);
     }
     public void balanceDrive(double left, double right) {
         m_drive.tankDrive(left, right);

@@ -128,26 +128,28 @@ public class Robot extends TimedRobot {
       drive.setCoastMode();
       SmartDashboard.putString("Drive Mode", "Coast");
     }
-    if (Usb2.getRawButtonPressed(3)) {
-      navx.getRollMotion();
-      drive.balanceDrive(navx.autoBalancePositive()[0], navx.autoBalancePositive()[1]);
-    }
     if (Usb2.getRawButtonPressed(4)) {
       double roll = navx.getRollMotion();
       boolean balanced = true;
-      do(
         if((roll >= 0.0) && (roll <= 1.0)){
           balanced = false;
         }
-        if(roll <= -1.0) {
-          drive.autoBalanceForward();
+        if((balanced == false) && (roll <= -1.0)) {
+          do {
+            drive.autoBalanceForward();
+            roll = navx.getRollMotion();
+          } while ((roll <= 0.80) & (roll >= -0.80));
+          balanced = true;
+        } else if ((balanced = false) && (roll >= 1.0)) {
+          do {
+            drive.autoBalanceBackward();
+            roll = navx.getRollMotion();
+          } while ((roll <= 0.80) & (roll >= -0.80));
+          balanced = true;
         }
-        else {
-          drive.autoBalanceBackward();
-        }
-        roll = navx.getRollMotion();
-      ) while (balanced);
-      drive.Drive(0,0);
+      { 
+        drive.Drive(DriveXValue, DriveYValue);
+      }
     }
     if(controller.getBButton()) {
       limeLight.Update_Limelight_Tracking();
