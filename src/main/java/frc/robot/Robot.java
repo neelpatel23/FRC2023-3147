@@ -130,26 +130,20 @@ public class Robot extends TimedRobot {
     }
     if (Usb2.getRawButtonPressed(4)) {
       double roll = navx.getRollMotion();
-      boolean balanced = true;
-        if((roll >= 0.0) && (roll <= 1.0)){
-          balanced = false;
-        }
-        if((balanced == false) && (roll <= -1.0)) {
-          do {
-            drive.autoBalanceForward();
-            roll = navx.getRollMotion();
-          } while ((roll <= 0.80) & (roll >= -0.80));
-          balanced = true;
-        } else if ((balanced = false) && (roll >= 1.0)) {
-          do {
-            drive.autoBalanceBackward();
-            roll = navx.getRollMotion();
-          } while ((roll <= 0.80) & (roll >= -0.80));
-          balanced = true;
-        }
-      { 
+      boolean balanced = false;
+      do {
+            if(roll <= -0.80) {
+             drive.autoBalanceForward();
+           }
+           else if(roll >= 0.80){
+             drive.autoBalanceBackward();
+           } 
+           roll = navx.getRollMotion();
+           if((roll <= 0.80) && (roll >= -0.80)){
+             balanced = true;
+           }
+        } while(!balanced);
         drive.Drive(DriveXValue, DriveYValue);
-      }
     }
     if(controller.getBButton()) {
       limeLight.Update_Limelight_Tracking();
