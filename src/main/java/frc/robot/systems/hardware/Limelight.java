@@ -74,39 +74,6 @@ public class Limelight {
         ntLimelight.getEntry("pipeline").setNumber(pipeline);
     }
 
-    public void Update_Limelight_Tracking()
-    {
-          // These numbers must be tuned for your Robot!  Be careful!
-          final double STEER_K = 15;                    // how hard to turn toward the target
-          final double DRIVE_K = 26;                    // how hard to drive fwd toward the target
-          final double DESIRED_TARGET_AREA = 3.948;        // Area of the target when the robot reaches the wall
-          final double MAX_DRIVE = 30;                   // Simple speed limit so we don't drive too fast
-    
-          if (getTV() < 1.0)
-          {
-            m_LimelightHasValidTarget = false;
-            m_LimelightDriveCommand = 0.0;
-            m_LimelightSteerCommand = 0.0;
-            return;
-          }
-  
-          m_LimelightHasValidTarget = true;
-  
-          // Start with proportional steering
-          double steer_cmd = getTX() * STEER_K;
-          m_LimelightSteerCommand = steer_cmd;
-  
-          // try to drive forward until the target area reaches our desired area
-          double drive_cmd = (DESIRED_TARGET_AREA - getTA()) * DRIVE_K;
-  
-          // don't let the robot drive too fast into the goal
-          if (drive_cmd > MAX_DRIVE)
-          {
-            drive_cmd = MAX_DRIVE;
-          }
-          m_LimelightDriveCommand = drive_cmd;
-          return;
-    }
     public double getZDistance() {
         zDistance = 0.0;
         NetworkTable ntLimelight = inst.getTable("limelight");

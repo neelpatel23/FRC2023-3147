@@ -2,6 +2,7 @@ package frc.robot.systems;
 
 import edu.wpi.first.wpilibj.Compressor;
 import edu.wpi.first.wpilibj.DoubleSolenoid;
+import edu.wpi.first.wpilibj.PneumaticHub;
 import edu.wpi.first.wpilibj.PneumaticsModuleType;
 import edu.wpi.first.wpilibj.DoubleSolenoid.Value;
 import frc.robot.Constants.HardwareCAN;
@@ -19,17 +20,16 @@ public class Pneumatics {
         PneumaticChannels.FORWARD, 
         PneumaticChannels.REVERSE
     );
+    public PneumaticHub ph2 = new PneumaticHub(HardwareCAN.PneumaticHUB);
 
     public void enableCompressor() {
         comp.enableDigital();
     }
     
-    public void openClaw() {
-        // comp.enableDigital();
+    public void closeClaw() {
         sold.set(Value.kForward);
     }
-    public void closeClaw() {
-        // comp.enableDigital();
+    public void openClaw() {
         sold.set(Value.kReverse);
     }
       

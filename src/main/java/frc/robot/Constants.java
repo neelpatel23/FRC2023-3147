@@ -18,6 +18,9 @@ public final class Constants {
     public static final int CANID5 = 5;
     public static final int CANID6 = 6;
   }
+  public static class ArmExtend {
+    public static final int CANID7 = 7;
+  }
   public static class HardwareCAN {
     // Hardware CANiDs
     public static final int PDU = 10;
