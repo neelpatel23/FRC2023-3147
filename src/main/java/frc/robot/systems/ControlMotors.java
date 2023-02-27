@@ -3,6 +3,7 @@ package frc.robot.systems;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import edu.wpi.first.wpilibj.motorcontrol.MotorControllerGroup;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import frc.robot.Constants;
 import frc.robot.Constants.ArmExtend;
 import frc.robot.Constants.ArmMotors;
 import frc.robot.Constants.Motors;
@@ -28,8 +29,12 @@ public class ControlMotors {
     // Drive Type
     public DifferentialDrive m_drive = new DifferentialDrive(m_left, m_right);
     // Constant Variables
-    public double[] motorTemps;
+    public double[] motorTemps = {0,0,0,0,0,0,0};
 
+    public ControlMotors()
+    {
+        arm_left.setInverted(true);
+    }
 
     public void Drive(double XDrive, double YDrive) {
         m_drive.setMaxOutput(SmartDashboard.getNumber("Drive Speed", 0));
@@ -55,17 +60,51 @@ public class ControlMotors {
     }
     
     public void driveToZ() {
-        m_drive.tankDrive(0.25, -0.25);
+        m_drive.tankDrive(0.35, -0.35);
     } 
     public void driveBack() {
-        m_drive.tankDrive(-0.50, 0.492);
+        
     }
+
+    public void driveBackStraight(double Yaw) {
+        if(Yaw < -.5)
+        {
+            m_drive.tankDrive(-0.4725, 0.5);
+        }
+        else if(Yaw > .5)
+        {
+            m_drive.tankDrive(-0.50, 0.4725);
+        }
+        else 
+        {
+            m_drive.tankDrive(-0.50, 0.5);
+        }
+
+    }
+
     public void driveForward() {
-        m_drive.tankDrive(0.50, -0.50);
+        m_drive.tankDrive(0.35, -0.35);
+    }
+    public void stopDrive() {
+        m_drive.tankDrive(0, 0);
     }
 
     public void extendArm(double speed) {
-        arm_extend.set(speed);
+        if(arm_extend.getEncoder().getPosition() >= Constants.ArmExtend.LIMITEXTEND && speed < 0)
+        {
+            arm_extend.set(speed);
+        }
+
+        else if(arm_extend.getEncoder().getPosition() <= Constants.ArmExtend.LIMITRETRACT && speed > 0)
+        {
+            arm_extend.set(speed);
+        }
+        
+        else 
+        {
+            arm_extend.set(0);
+        }
+        
     }
     
     public void autoBalanceForward() {
@@ -78,36 +117,86 @@ public class ControlMotors {
         m_drive.tankDrive(left, right);
     }
 
-    public void moveArm(double speed) {
-        arm_left.setInverted(true);
-        arm_left.set(speed);
-        arm_right.set(speed);
+    public void moveArm(double speed) 
+    {
+        if(arm_left.getEncoder().getPosition() <= Constants.ArmMotors.LIMIT && speed > 0)
+        {
+            arm_left.set(speed);
+            arm_right.set(speed);
+        }
+        else if(arm_left.getEncoder().getPosition() >= -Constants.ArmMotors.LIMIT && speed < 0)
+        {
+            arm_left.set(speed);
+            arm_right.set(speed);
+        }
+        else 
+        {
+            arm_left.set(0);
+            arm_right.set(0);
+        }
+       
     }
     public void controlArm(double speed) {
         arm_extend.set(speed * SmartDashboard.getNumber("ExtendSpeed", speed));
     }
 
-    // private double toFarhenheit(double celsius) {
-    //     return (celsius*1.8) + 32;
-    // }
-    // public void getMotorTemps() {
-    //     motorTemps[0] = toFarhenheit(m_leftFront.getMotorTemperature());
-    //     motorTemps[1] = toFarhenheit(m_leftRear.getMotorTemperature());
-    //     motorTemps[2] = toFarhenheit(m_rightFront.getMotorTemperature());
-    //     motorTemps[3] = toFarhenheit(m_rightRear.getMotorTemperature());
-    //     motorTemps[4] = toFarhenheit(arm_left.getMotorTemperature());
-    //     motorTemps[5] = toFarhenheit(arm_right.getMotorTemperature());
-    //     motorTemps[6] = toFarhenheit(arm_extend.getMotorTemperature());
+    public boolean isArmMoving() {
+        return (arm_extend.get() == 0);
+    }
 
-    // }
-    // public void pushMotorTemps() {
-    //     SmartDashboard.putNumberArray("Motor Temps", motorTemps);
-    // }
+    public boolean isDriveMoving() {
+        return (m_rightFront.get() == 0);
+    }
+
+    private double toFarhenheit(double celsius) {
+        return (celsius*1.8) + 32;
+    }
+
+    public void pushMotorTemps() {
+        SmartDashboard.putNumber("Drv-LF-Temp", toFarhenheit(m_leftFront.getMotorTemperature()));
+        SmartDashboard.putNumber("Drv-LR-Temp", toFarhenheit(m_leftRear.getMotorTemperature()));
+        SmartDashboard.putNumber("Drv-RF-Temp", toFarhenheit(m_rightFront.getMotorTemperature()));
+        SmartDashboard.putNumber("Drv-RR-Temp", toFarhenheit(m_rightRear.getMotorTemperature()));
+        SmartDashboard.putNumber("Arm-L-Temp", toFarhenheit(arm_left.getMotorTemperature()));
+        SmartDashboard.putNumber("Arm-R-Temp", toFarhenheit(arm_right.getMotorTemperature()));
+        SmartDashboard.putNumber("Extend-Temp", toFarhenheit(arm_extend.getMotorTemperature()));
+    }
+
     public void resetAllAutonEncoders() {
-        m_leftFront.getEncoder().setPosition(0);
+        m_leftRear.getEncoder().setPosition(0);
         m_rightFront.getEncoder().setPosition(0);
         arm_left.getEncoder().setPosition(0);
         arm_extend.getEncoder().setPosition(0);
     }
+
+    public void resetDriveEncoders() {
+        m_leftFront.getEncoder().setPosition(0);
+        m_rightFront.getEncoder().setPosition(0);
+    }
+
+    public boolean isArmExtendedPastLowAngleLimit()
+    {
+        if(arm_extend.getEncoder().getPosition() < -80)
+        {
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+    
+    public boolean isArmExtendedToMaxLimit()
+    {
+        if(arm_extend.getEncoder().getPosition() < Constants.ArmExtend.LIMITEXTEND)
+        {
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+
 
 }

@@ -17,9 +17,12 @@ public final class Constants {
   public static class ArmMotors {
     public static final int CANID5 = 5;
     public static final int CANID6 = 6;
+    public static final int LIMIT = 310;
   }
   public static class ArmExtend {
     public static final int CANID7 = 7;
+    public static final int LIMITEXTEND = -127;
+    public static final int LIMITRETRACT = -5;
   }
   public static class HardwareCAN {
     // Hardware CANiDs
@@ -32,4 +35,5 @@ public final class Constants {
   }
 
   public static double DEADBAND = .2;
+
 }

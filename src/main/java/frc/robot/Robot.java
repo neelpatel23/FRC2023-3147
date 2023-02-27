@@ -49,6 +49,15 @@ public class Robot extends TimedRobot {
   private double zDistance;
   private double arm;
   private double arm2;
+  private boolean step0 = true;
+  private boolean step1 = false;
+  private boolean step2 = false;
+  private boolean step3 = false;
+  private boolean step4 = false; 
+  private boolean step5 = false; 
+  private boolean step6 = false; 
+  private boolean step7 = false; 
+
   private boolean DriverControl = true;
   private boolean autoAligning = false;
   public boolean isBalanced = true;
@@ -62,7 +71,7 @@ public class Robot extends TimedRobot {
   public void robotInit() {
     pdh.clearStickyFaults();
     robot_leds = new AddressableLED(0);
-    robot_leds_buffer = new AddressableLEDBuffer(300);
+    robot_leds_buffer = new AddressableLEDBuffer(135);
     robot_leds.setLength(robot_leds_buffer.getLength());
     robot_leds.setData(robot_leds_buffer);
     robot_leds.start();
@@ -71,6 +80,8 @@ public class Robot extends TimedRobot {
     pneumatics.enableCompressor();
     limeLight.initiateLimelight();
     SmartDashboard.putNumber("Roll", navx.getRollMotion());
+    SmartDashboard.putNumber("Pitch", navx.getPitchMotion());
+    SmartDashboard.putNumber("Yaw", navx.getYawMotion());
     SmartDashboard.putNumber("Extend Speed", .3);
     SmartDashboard.putString("Drive Mode", "Brake");
     SmartDashboard.putString("Drive Control", "True");
@@ -105,16 +116,19 @@ public class Robot extends TimedRobot {
     ArmSpeed = checkDeadband(controller.getRightY());
     arm = checkDeadband(controller.getRightTriggerAxis());
     arm2 = checkDeadband(controller.getLeftTriggerAxis());
-    SmartDashboard.putNumber(("Extend"), ExtendArm);
-    SmartDashboard.putNumber(("Retract"), RetractArm);
     DriveXValue = checkDeadband(controller.getLeftX());
     DriveYValue = checkDeadband(controller.getLeftY());
-    DriveEncoder1 = ControlMotors.m_leftFront.getEncoder().getPosition();
+    DriveEncoder1 = ControlMotors.m_leftRear.getEncoder().getPosition();
     DriveEncoder2 = ControlMotors.m_rightFront.getEncoder().getPosition();
     SmartDashboard.putNumber("Arm Encoder", ControlMotors.arm_left.getEncoder().getPosition());
     SmartDashboard.putNumber("Drive Encoder1", DriveEncoder1);
     SmartDashboard.putNumber("Drive Encoder2", DriveEncoder2);
     SmartDashboard.putNumber("Ex & Rt Encoder", ControlMotors.arm_extend.getEncoder().getPosition());
+    ControlMotors.pushMotorTemps();
+
+    SmartDashboard.putNumber("Roll", navx.getRollMotion());
+    SmartDashboard.putNumber("Pitch", navx.getPitchMotion());
+    SmartDashboard.putNumber("Yaw", navx.getYawMotion());
 
     /*
      * START OF ALL USER BASED CONTROLS
@@ -130,18 +144,24 @@ public class Robot extends TimedRobot {
     if (Usb2.getRawButtonPressed(2)) {ControlMotors.setCoastMode(); SmartDashboard.putString("Drive Mode", "Coast");}
     if (Usb2.getRawButtonPressed(7)) {
       for (var i = 0; i < robot_leds_buffer.getLength(); i++) {
-        robot_leds_buffer.setRGB(i, 255, 0, 0);
+        robot_leds_buffer.setHSV(i, 0, 255, 255);
       }
       robot_leds.setData(robot_leds_buffer);
     }
     if (Usb2.getRawButtonPressed(8)) {
       for (var i = 0; i < robot_leds_buffer.getLength(); i++) {
-        robot_leds_buffer.setRGB(i, 0, 0, 255);
+        robot_leds_buffer.setHSV(i, 240, 100, 54);
       }
       robot_leds.setData(robot_leds_buffer);
     }
     if (Usb2.getRawButton(9)) {
       rainbow();
+      robot_leds.setData(robot_leds_buffer);
+    }
+    if (Usb2.getRawButtonReleased(9)) {
+      for (var i = 0; i < robot_leds_buffer.getLength(); i++) {
+        robot_leds_buffer.setRGB(i, 0, 0, 0);
+      }
       robot_leds.setData(robot_leds_buffer);
     }
     /* ----------------------------------------------------------------------------------------------------- */
@@ -162,7 +182,7 @@ public class Robot extends TimedRobot {
         DriverControl = true;
         SmartDashboard.putString("Driver Control", "True");
         autoAligning = false;
-        controller.setRumble(RumbleType.kBothRumble, 1);
+        // controller.setRumble(RumbleType.kBothRumble, 1);
       }
     }
     if (Usb2.getRawButtonPressed(4)) {
@@ -190,9 +210,9 @@ public class Robot extends TimedRobot {
       if ((roll <= 1.10) && (roll >= -1.10)) 
       {
         isBalanced = true;
-      }
         DriverControl = true;
         SmartDashboard.putString("Driver Control", "True");
+      }
     }
 
     if (Usb2.getRawButtonPressed(6)) {
@@ -214,7 +234,7 @@ public class Robot extends TimedRobot {
         ControlMotors.extendArm(arm2);
       }  
       SmartDashboard.putString("Driver Control", "True");
-      controller.setRumble(RumbleType.kBothRumble, 0);
+      //controller.setRumble(RumbleType.kBothRumble, 0);
       ControlMotors.Drive(DriveXValue, DriveYValue);
       ControlMotors.moveArm(ArmSpeed);
     }
@@ -229,16 +249,21 @@ public class Robot extends TimedRobot {
   /** This function is called periodically during autonomous. */
   @Override
   public void autonomousPeriodic() {
-    boolean step1 = false;
-    boolean step2 = false;
-    boolean step3 = false;
-    boolean step4 = false; 
-    boolean step5 = false; 
-    boolean step6 = false; 
-    DriveEncoder1 = ControlMotors.m_leftFront.getEncoder().getPosition();
+    DriveEncoder1 = ControlMotors.m_leftRear.getEncoder().getPosition();
     DriveEncoder2 = ControlMotors.m_rightFront.getEncoder().getPosition();
     HlArm = ControlMotors.arm_left.getEncoder().getPosition();
     ERArm = ControlMotors.arm_extend.getEncoder().getPosition();
+    SmartDashboard.putNumber("Ex & Rt Encoder", ERArm);
+    SmartDashboard.putNumber("Arm Encoder", HlArm);
+    SmartDashboard.putBoolean("Step0", step0);
+    SmartDashboard.putBoolean("Step1", step1);
+    SmartDashboard.putBoolean("Step2", step2);
+    SmartDashboard.putBoolean("Step3", step3);
+    SmartDashboard.putBoolean("Step4", step4);
+    SmartDashboard.putBoolean("Step5", step5);
+    SmartDashboard.putBoolean("Step6", step6);
+    SmartDashboard.putBoolean("Step7", step7);
+
     switch (autonModeSelected) {
       case a0:
       // Lower Arm to placing point
@@ -250,10 +275,10 @@ public class Robot extends TimedRobot {
       }
       // Extend Arm to dropping height
       if (step1 == true) {
-        if (ERArm != -125 && ERArm >= -125) {
+        if (ERArm != -124 && ERArm >= -124) {
           ControlMotors.extendArm(-0.45);
         }
-        else if (ERArm <= -125 && ERArm >= -130) {
+        else if (ERArm <= -124 && ERArm >= -127) {
           ControlMotors.extendArm(0);
           step2 = true;
         }
@@ -265,90 +290,103 @@ public class Robot extends TimedRobot {
       }
       // Retract Arm back to starting position
       if (step3 == true) {
-        if (ERArm <= -125 && ERArm >= -133) {
+        if (ERArm <= -125 && ERArm >= -130) {
           ControlMotors.extendArm(0.45);
         }
-        else if (ERArm == 0 && ERArm >= -5) {
+        else if (ERArm == 1 && ERArm >= -3) {
           ControlMotors.extendArm(0);
           step4 = true;
         }
       }
       // Start Driving back while lowering and reversing arm position
       if (step4 == true) {
-        if ((DriveEncoder1 != -86 && DriveEncoder1 >= -86) && (DriveEncoder2 != 86 && DriveEncoder2 <= 86)) {
-          ControlMotors.driveBack();
-        }
-        else if ((DriveEncoder1 == -86) && (DriveEncoder2 == 86)) {
-          step5 = true;
-          ControlMotors.Drive(0, 0);
-        }
         if (HlArm != -315 && HlArm >= -315) {
           ControlMotors.moveArm(-1);
         }
         else if (HlArm <= -315 && HlArm >= -318) {
           ControlMotors.moveArm(0);
         }
+        if ((DriveEncoder1 != -86 && DriveEncoder1 >= -86) && (DriveEncoder2 != 86 && DriveEncoder2 <= 86)) {
+          ControlMotors.driveBack();
+        }
+        else if ((DriveEncoder1 <= -85 && DriveEncoder1 >= -88) && (DriveEncoder2 >= 85 && DriveEncoder2 <= 88)) {
+          ControlMotors.stopDrive();
+          step5 = true;
+        }
       }
       if (step5 == true) {
-        ControlMotors.resetAllAutonEncoders();
-        step6 = true;
-      }
-      if (step6 == true) {
-        if ((DriveEncoder1 != 0 && DriveEncoder1 <= 0) && (DriveEncoder2 != 0 && DriveEncoder2 <= 0)) {
+        if ((DriveEncoder1 != -36 && DriveEncoder1 <= -36) && (DriveEncoder2 != 36 && DriveEncoder2 >= 36)) {
           ControlMotors.driveForward();
         }
-        else if ((DriveEncoder1 == 50) && (DriveEncoder2 == -50)) {
-          ControlMotors.Drive(0, 0);
+        else if ((DriveEncoder1 <= -35 && DriveEncoder1 >= -38) && (DriveEncoder2 >= 35 && DriveEncoder2 <= 38)) {
+          ControlMotors.stopDrive();
         }
       }
+      break;
       case a1:
         // Lower Arm to placing point
-        if (HlArm != 159 && HlArm <= 159) {
-          ControlMotors.moveArm(1);
-        } else if (HlArm >= 159 && HlArm <= 161) {
-          ControlMotors.moveArm(0);
-          step1 = true;
+        if(step0)
+        {
+          if (HlArm <= 142.5) {
+            ControlMotors.moveArm(1);
+          } else {
+            ControlMotors.moveArm(0);
+            step0 = false;
+            step1 = true;
+          }
         }
+        
         // Extend Arm to dropping height
-        if (step1 == true) {
-          if (ERArm != -125 && ERArm >= -125) {
+        if (step1) {
+          if (ERArm >= -125) {
             ControlMotors.extendArm(-0.45);
           }
-          else if (ERArm <= -125 && ERArm >= -130) {
+          else {
             ControlMotors.extendArm(0);
+            step1 = false;
             step2 = true;
           }
         }
+
         // Open Claw to drop Cone
-        if (step2 == true) {
+        if (step2) {
           pneumatics.openClaw();
+          step2 = false;
           step3 = true;
         }
+
         // Retract Arm back to starting position
-        if (step3 == true) {
-          if (ERArm <= -125 && ERArm >= -133) {
+        if (step3) {
+          if (ERArm <= -5) {
             ControlMotors.extendArm(0.45);
           }
-          else if (ERArm == 0 && ERArm >= -5) {
+          else {
             ControlMotors.extendArm(0);
+            step3 = false;
+            navx.ahrs.reset();
             step4 = true;
           }
         }
         // Start Driving back while lowering and reversing arm position
-        if (step4 == true) {
-        if ((DriveEncoder1 != -78 && DriveEncoder1 >= -78) && (DriveEncoder2 != 78 && DriveEncoder2 <= 78)) {
-          ControlMotors.driveBack();
+        if (step4) {
+          if ((DriveEncoder1 >= -78) && (DriveEncoder2 <= 78)) {
+            //ControlMotors.driveBack();
+            SmartDashboard.putNumber("Yaw", navx.getYawMotion());
+            ControlMotors.driveBackStraight(navx.getYawMotion());
+          }
+          else if ((DriveEncoder1 <= -78) && (DriveEncoder2 >= 78)) {
+            ControlMotors.Drive(0, 0);
+          }
+          
+          if (HlArm >= -315) {
+            ControlMotors.moveArm(-1);
+          }
+          else if (HlArm <= -315) {
+            ControlMotors.moveArm(0);
+          }
+
+          if (ControlMotors.isArmMoving() == false && ControlMotors.isDriveMoving() == false);
         }
-        else if ((DriveEncoder1 == -78) && (DriveEncoder2 == 78)) {
-          ControlMotors.Drive(0, 0);
-        }
-        if (HlArm != -315 && HlArm >= -315) {
-          ControlMotors.moveArm(-1);
-        }
-        else if (HlArm <= -315 && HlArm >= -318) {
-          ControlMotors.moveArm(0);
-        }
-      }
     }
   }
 
