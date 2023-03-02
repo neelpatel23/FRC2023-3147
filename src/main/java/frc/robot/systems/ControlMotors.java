@@ -1,5 +1,6 @@
 package frc.robot.systems;
 
+import edu.wpi.first.wpilibj.Encoder;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import edu.wpi.first.wpilibj.motorcontrol.MotorControllerGroup;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -28,12 +29,21 @@ public class ControlMotors {
     public MotorControllerGroup arm_motors = new MotorControllerGroup(arm_left, arm_right);
     // Drive Type
     public DifferentialDrive m_drive = new DifferentialDrive(m_left, m_right);
+
+    public Encoder armEncoder = new Encoder(1, 2);
+
+
     // Constant Variables
     public double[] motorTemps = {0,0,0,0,0,0,0};
+    public final double STEER_K = 0.03;                    // how hard to turn toward the target
+    public final double DRIVE_K = 0.26;                    // how hard to drive fwd toward the target
+    public final double DESIRED_TARGET_AREA = 13.0;        // Area of the target when the robot reaches the wall
+    public final double MAX_DRIVE = 0.7;     
 
     public ControlMotors()
     {
         arm_left.setInverted(true);
+        armEncoder.setReverseDirection(true);
     }
 
     public void Drive(double XDrive, double YDrive) {
@@ -62,10 +72,6 @@ public class ControlMotors {
     public void driveToZ() {
         m_drive.tankDrive(0.35, -0.35);
     } 
-    public void driveBack() {
-        
-    }
-
     public void driveBackStraight(double Yaw) {
         if(Yaw < -.5)
         {
@@ -79,23 +85,43 @@ public class ControlMotors {
         {
             m_drive.tankDrive(-0.50, 0.5);
         }
-
+    }
+    public void driveForwardStraight(double Yaw) {
+        if(Yaw < -.5){
+            m_drive.tankDrive(0.5, -0.4725);
+        }
+        else if (Yaw > .5){
+            m_drive.tankDrive(0.4725, -0.5);
+        }
+        else {
+            m_drive.tankDrive(0.5,-0.5);
+        }
     }
 
     public void driveForward() {
-        m_drive.tankDrive(0.35, -0.35);
+        m_drive.tankDrive(0.45, -0.45);
     }
     public void stopDrive() {
         m_drive.tankDrive(0, 0);
     }
+    
+    public void autoBalanceForward() {
+        m_drive.tankDrive(0.10, -0.10, false);
+    }
+    public void autoBalanceBackward() {
+        m_drive.tankDrive(-0.10, 0.10, false);
+    }
+    public void balanceDrive(double left, double right) {
+        m_drive.tankDrive(left, right);
+    }
 
     public void extendArm(double speed) {
-        if(arm_extend.getEncoder().getPosition() >= Constants.ArmExtend.LIMITEXTEND && speed < 0)
+        if(isArmExtendAllowed() && speed < 0)
         {
             arm_extend.set(speed);
         }
 
-        else if(arm_extend.getEncoder().getPosition() <= Constants.ArmExtend.LIMITRETRACT && speed > 0)
+        else if(isArmRetractAllowed() && speed > 0)
         {
             arm_extend.set(speed);
         }
@@ -106,25 +132,15 @@ public class ControlMotors {
         }
         
     }
-    
-    public void autoBalanceForward() {
-        m_drive.tankDrive(0.30, -0.30);
-    }
-    public void autoBalanceBackward() {
-        m_drive.tankDrive(-0.30, 0.30);
-    }
-    public void balanceDrive(double left, double right) {
-        m_drive.tankDrive(left, right);
-    }
 
     public void moveArm(double speed) 
     {
-        if(arm_left.getEncoder().getPosition() <= Constants.ArmMotors.LIMIT && speed > 0)
+        if(isArmRotateForwardAllowed() && speed > 0)
         {
             arm_left.set(speed);
             arm_right.set(speed);
         }
-        else if(arm_left.getEncoder().getPosition() >= -Constants.ArmMotors.LIMIT && speed < 0)
+        else if(isArmRotateReverseAllowed() && speed < 0)
         {
             arm_left.set(speed);
             arm_right.set(speed);
@@ -136,9 +152,9 @@ public class ControlMotors {
         }
        
     }
-    public void controlArm(double speed) {
-        arm_extend.set(speed * SmartDashboard.getNumber("ExtendSpeed", speed));
-    }
+    //public void controlArm(double speed) {
+    //    arm_extend.set(speed * SmartDashboard.getNumber("ExtendSpeed", speed));
+    //}
 
     public boolean isArmMoving() {
         return (arm_extend.get() == 0);
@@ -163,10 +179,11 @@ public class ControlMotors {
     }
 
     public void resetAllAutonEncoders() {
-        m_leftRear.getEncoder().setPosition(0);
+        m_leftFront.getEncoder().setPosition(0);
         m_rightFront.getEncoder().setPosition(0);
         arm_left.getEncoder().setPosition(0);
         arm_extend.getEncoder().setPosition(0);
+        armEncoder.reset();
     }
 
     public void resetDriveEncoders() {
@@ -174,29 +191,146 @@ public class ControlMotors {
         m_rightFront.getEncoder().setPosition(0);
     }
 
-    public boolean isArmExtendedPastLowAngleLimit()
+    public boolean isArmExtendAllowed()
     {
-        if(arm_extend.getEncoder().getPosition() < -80)
-        {
-            return true;
-        }
-        else
+        //Stop arm from extending if outside of maximum limit
+        if(arm_extend.getEncoder().getPosition() <= Constants.ArmExtend.LIMITEXTEND)
         {
             return false;
         }
-    }
-    
-    public boolean isArmExtendedToMaxLimit()
-    {
-        if(arm_extend.getEncoder().getPosition() < Constants.ArmExtend.LIMITEXTEND)
-        {
-            return true;
-        }
-        else
+
+        //Stop arm from extending if within the low angle limit (from zero). Prevents breaking the height restriction (6' 6")
+        if(Math.abs(armEncoder.getDistance()) < Constants.ArmMotors.LOWANGLE && arm_extend.getEncoder().getPosition() < -80)
         {
             return false;
         }
+
+        //Stop arm from extending if within the high angle limit (from zero). Prevents breaking the perimeter rule (4' 8")
+        if(Math.abs(armEncoder.getDistance()) > Constants.ArmMotors.HIGHANGLE && arm_extend.getEncoder().getPosition() < -80)
+        {
+            return false;
+        }
+
+        return true;
     }
 
+    public boolean isArmRetractAllowed()
+    {
+        //Stop arm from retracting if outside of minimum limit
+        if(arm_extend.getEncoder().getPosition() >= Constants.ArmExtend.LIMITRETRACT)
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    public boolean isArmRotateForwardAllowed()
+    {
+        //Stop arm rotating outside of maximum limit
+        if(armEncoder.getDistance() >= Constants.ArmMotors.LIMIT)
+        {
+            return false;
+        }
+
+        //Stop arm rotating forward if arm is extended past angle limit
+        if(arm_extend.getEncoder().getPosition() < Constants.ArmExtend.LIMITANGLE)
+        {
+            //Check positive angle
+            if(armEncoder.getDistance() > Constants.ArmMotors.HIGHANGLE)
+            {
+                return false;
+            }
+
+            //Check negative angle
+            if(armEncoder.getDistance() > -Constants.ArmMotors.LOWANGLE && armEncoder.getDistance() < 0)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    public boolean isArmRotateReverseAllowed()
+    {
+        //Stop arm rotating outside of maximum limit
+        if(armEncoder.getDistance() <= -Constants.ArmMotors.LIMIT)
+        {
+            return false;
+        }
+
+        //Stop arm rotating backward if arm is extended past angle limit
+        if(arm_extend.getEncoder().getPosition() < Constants.ArmExtend.LIMITANGLE)
+        {
+            //Check positive angle
+            if(armEncoder.getDistance() < -Constants.ArmMotors.HIGHANGLE)
+            {
+                return false;
+            }
+
+            //Check negative angle
+            if(armEncoder.getDistance() < Constants.ArmMotors.LOWANGLE && armEncoder.getDistance() > 0)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    public boolean moveArmTo(double Rotate, double Extend)
+    {
+        double armEncoderValue = armEncoder.getDistance();
+        double armExtend = arm_extend.getEncoder().getPosition();
+        double rotateSpeed = 1;
+        double extendSpeed = 1;
+        SmartDashboard.putNumber("ArmEncoder2", armEncoderValue);
+        SmartDashboard.putNumber(("Rotate"), Rotate);
+
+        if((armEncoderValue < Rotate + 5) && (armEncoderValue > Rotate - 5) && (armExtend < Extend + 1) && (armExtend > Extend - 1))
+        {
+            //Arm in position
+            moveArm(0);
+            extendArm(0);
+            return true;
+        }
+
+        if(Math.abs(Rotate - armEncoderValue) < 35)
+        {
+            rotateSpeed = 0.15;
+        }
+
+        if(Math.abs(Extend - armExtend) < 15)
+        {
+            extendSpeed = .20;
+        }
+
+        if(armEncoderValue > Rotate - 5)
+        {
+            moveArm(-rotateSpeed);
+        }
+        else if (armEncoderValue < Rotate + 5)
+        {
+            moveArm(rotateSpeed);
+        }
+        else {
+            moveArm(0);
+        }
+
+        if(armExtend > Extend - 1)
+        {
+            extendArm(-extendSpeed);
+        }
+        else if(armExtend < Extend + 1)
+        {
+            extendArm(extendSpeed);
+        }
+        else {
+            extendArm(0);
+        }
+
+        return false;
+    }
 
 }

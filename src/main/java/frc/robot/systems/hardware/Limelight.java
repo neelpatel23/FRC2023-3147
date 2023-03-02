@@ -1,8 +1,6 @@
 package frc.robot.systems.hardware;
-
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
-
 import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableEntry;
 
@@ -18,17 +16,12 @@ public class Limelight {
     public double m_LimelightDriveCommand;
     public double m_LimelightSteerCommand;
 
-
     public void initiateLimelight()  {
         inst = NetworkTableInstance.getDefault();
         ntLimelight = inst.getTable("limelight");
     }
 
     public void updateLimelightDashboard() {
-        SmartDashboard.putNumber("Valid Target", ntLimelight.getEntry("tv").getDouble(0.0));
-        SmartDashboard.putNumber("Horizoncal Offset", ntLimelight.getEntry("tx").getDouble(0.0));
-        SmartDashboard.putNumber("Vertical Offset", ntLimelight.getEntry("ty").getDouble(0.0));
-        SmartDashboard.putNumber("Area of Target", ntLimelight.getEntry("ta").getDouble(0.0));
     }
     public double metersToInches(double dist){
         double distInInches = dist * 39.3701;
@@ -105,3 +98,4 @@ public class Limelight {
         }
 
 }
+

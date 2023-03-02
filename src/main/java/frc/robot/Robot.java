@@ -8,7 +8,6 @@ import edu.wpi.first.wpilibj.PowerDistribution;
 // FRC
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.XboxController;
-import edu.wpi.first.wpilibj.GenericHID.RumbleType;
 import edu.wpi.first.wpilibj.PowerDistribution.ModuleType;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -16,6 +15,8 @@ import edu.wpi.first.wpilibj2.command.CommandScheduler;
 // Constants
 import frc.robot.Constants.HardwareCAN;
 import frc.robot.Constants.OperatorConstants;
+import frc.robot.Constants.PREFFEREDAUTO;
+import frc.robot.Constants.SCORING_POSITIONS_ER;
 // Drive(s)
 import frc.robot.systems.ControlMotors;
 // Pneumatics
@@ -44,8 +45,6 @@ public class Robot extends TimedRobot {
   private double HlArm;
   private double ERArm;
   private double ArmSpeed;
-  private double ExtendArm;
-  private double RetractArm;
   private double zDistance;
   private double arm;
   private double arm2;
@@ -57,10 +56,19 @@ public class Robot extends TimedRobot {
   private boolean step5 = false; 
   private boolean step6 = false; 
   private boolean step7 = false; 
-
+  private boolean presettingArm = false;
+  private boolean settingY = false;
+  private boolean settingB = false;
+  private boolean settingA = false;
+  private boolean settingX = false;
+  private int firsthue = 0;
   private boolean DriverControl = true;
   private boolean autoAligning = false;
   public boolean isBalanced = true;
+  private boolean auto = controller.getAButton();
+  private boolean m_LimelightHasValidTarget = false;
+  private double m_LimelightDriveCommand = 0.0;
+  private double m_LimelightSteerCommand = 0.0;
   private static final String a0 = "Preffered Position";
   private static final String a1 = "Secondary Position";
   private String autonModeSelected;
@@ -73,7 +81,6 @@ public class Robot extends TimedRobot {
     robot_leds = new AddressableLED(0);
     robot_leds_buffer = new AddressableLEDBuffer(135);
     robot_leds.setLength(robot_leds_buffer.getLength());
-    robot_leds.setData(robot_leds_buffer);
     robot_leds.start();
     m_robotContainer = new RobotContainer();
     ControlMotors.setBrakeIdle();
@@ -84,15 +91,16 @@ public class Robot extends TimedRobot {
     SmartDashboard.putNumber("Yaw", navx.getYawMotion());
     SmartDashboard.putNumber("Extend Speed", .3);
     SmartDashboard.putString("Drive Mode", "Brake");
-    SmartDashboard.putString("Drive Control", "True");
+    SmartDashboard.putString("Driver Control", "True");
     SmartDashboard.putNumber("Drive Speed", .90);
     SmartDashboard.putBoolean("LEDS", true);
+    pneumatics.closeClaw();
     // AUTON MODES
     auton_chooser.setDefaultOption("Preferred Auto", a0);
     auton_chooser.addOption("Preferred Auto", a0);
     auton_chooser.addOption("Secondary Auto", a1);
     SmartDashboard.putData(auton_chooser);
-    // ControlMotors.getMotorTemps();
+    ControlMotors.resetAllAutonEncoders();
   }
 
   @Override
@@ -100,6 +108,7 @@ public class Robot extends TimedRobot {
     // ControlMotors.pushMotorTemps();
     CommandScheduler.getInstance().run();
     pdh.setSwitchableChannel(SmartDashboard.getBoolean("LEDS", true));
+    robot_leds.setData(robot_leds_buffer);
     SmartDashboard.putNumber("Storage Pressure", pneumatics.ph2.getPressure(0));
     SmartDashboard.putNumber("Working Pressure", pneumatics.ph2.getPressure(1));
   }
@@ -110,25 +119,26 @@ public class Robot extends TimedRobot {
   /** This function is called periodically during operator control. */
   @Override
   public void teleopPeriodic() {
-    // ControlMotors.getMotorTemps();
     limeLight.updateLimelightDashboard();
-    // Deadbands and Controller
+    ControlMotors.pushMotorTemps();
     ArmSpeed = checkDeadband(controller.getRightY());
     arm = checkDeadband(controller.getRightTriggerAxis());
     arm2 = checkDeadband(controller.getLeftTriggerAxis());
     DriveXValue = checkDeadband(controller.getLeftX());
     DriveYValue = checkDeadband(controller.getLeftY());
-    DriveEncoder1 = ControlMotors.m_leftRear.getEncoder().getPosition();
+    DriveEncoder1 = ControlMotors.m_leftFront.getEncoder().getPosition();
     DriveEncoder2 = ControlMotors.m_rightFront.getEncoder().getPosition();
     SmartDashboard.putNumber("Arm Encoder", ControlMotors.arm_left.getEncoder().getPosition());
     SmartDashboard.putNumber("Drive Encoder1", DriveEncoder1);
     SmartDashboard.putNumber("Drive Encoder2", DriveEncoder2);
     SmartDashboard.putNumber("Ex & Rt Encoder", ControlMotors.arm_extend.getEncoder().getPosition());
-    ControlMotors.pushMotorTemps();
-
     SmartDashboard.putNumber("Roll", navx.getRollMotion());
     SmartDashboard.putNumber("Pitch", navx.getPitchMotion());
     SmartDashboard.putNumber("Yaw", navx.getYawMotion());
+    SmartDashboard.putBoolean("IsArmRotateForwardAllowed", ControlMotors.isArmRotateForwardAllowed());
+    SmartDashboard.putBoolean("IsArmRotateReverseAllowed", ControlMotors.isArmRotateReverseAllowed());
+    SmartDashboard.putBoolean("IsArmExtendAllowed", ControlMotors.isArmExtendAllowed());
+    SmartDashboard.putBoolean("IsArmRetractAllowed", ControlMotors.isArmRetractAllowed());
 
     /*
      * START OF ALL USER BASED CONTROLS
@@ -195,19 +205,18 @@ public class Robot extends TimedRobot {
       SmartDashboard.putString("Driver Control", "False");
       DriverControl = false;
     }
-    if (isBalanced = false) {
+    if (isBalanced == false) {
       double roll = navx.getRollMotion();
       SmartDashboard.putNumber("Roll", navx.getRollMotion());
-      if(roll <= -0.80) 
+      if(roll <= -20.0) 
       {
         ControlMotors.autoBalanceForward();
       }
-      else if (roll >= 0.80)
+      else if (roll >= 20.0)
       {
         ControlMotors.autoBalanceBackward();
-      } 
-      roll = navx.getRollMotion();
-      if ((roll <= 1.10) && (roll >= -1.10)) 
+      }
+      else if ((roll <= 20.0) && (roll >= -20.0)) 
       {
         isBalanced = true;
         DriverControl = true;
@@ -237,19 +246,54 @@ public class Robot extends TimedRobot {
       //controller.setRumble(RumbleType.kBothRumble, 0);
       ControlMotors.Drive(DriveXValue, DriveYValue);
       ControlMotors.moveArm(ArmSpeed);
+      if (controller.getYButtonReleased()) {presettingArm = false;}
+      if (controller.getBButtonReleased()) {presettingArm = false;}
+      if (controller.getAButtonReleased()) {presettingArm = false;}
+      if (controller.getXButtonReleased()) {presettingArm = false;}
+
+      settingY = controller.getYButton();
+      settingB = controller.getBButton();
+
+      if (settingY) {
+        presetY();
+      }
+      if (settingB) {
+        presetB();
+      }
+    }
+
+    SmartDashboard.putNumber("ArmEncoder2", ControlMotors.armEncoder.getDistance());
+  }
+
+  public void presetY() {
+    if (ControlMotors.moveArmTo(325, -155) && presettingArm) {
+      presettingArm = false;
     }
   }
-  
+  public void presetB() {
+    presettingArm = true;
+    if (HlArm <= 120.5 && presettingArm) {
+      ControlMotors.moveArm(1);
+    } else {
+      ControlMotors.moveArm(0);
+    }
+    if (ERArm >= -90 && presettingArm) {
+      ControlMotors.extendArm(-0.85);
+    } else {
+      ControlMotors.extendArm(0);
+      presettingArm = false;
+    }
+  }
+    
   @Override
-  public void autonomousInit() {
-    ControlMotors.resetAllAutonEncoders();
+  public void autonomousInit() { 
     autonModeSelected = auton_chooser.getSelected();
   }
 
   /** This function is called periodically during autonomous. */
   @Override
   public void autonomousPeriodic() {
-    DriveEncoder1 = ControlMotors.m_leftRear.getEncoder().getPosition();
+    DriveEncoder1 = ControlMotors.m_leftFront.getEncoder().getPosition();
     DriveEncoder2 = ControlMotors.m_rightFront.getEncoder().getPosition();
     HlArm = ControlMotors.arm_left.getEncoder().getPosition();
     ERArm = ControlMotors.arm_extend.getEncoder().getPosition();
@@ -266,62 +310,82 @@ public class Robot extends TimedRobot {
 
     switch (autonModeSelected) {
       case a0:
+      if (step0)
       // Lower Arm to placing point
-      if (HlArm != 159 && HlArm <= 159) {
-        ControlMotors.moveArm(1);
-      } else if (HlArm >= 159 && HlArm <= 161) {
-        ControlMotors.moveArm(0);
-        step1 = true;
-      }
-      // Extend Arm to dropping height
-      if (step1 == true) {
-        if (ERArm != -124 && ERArm >= -124) {
-          ControlMotors.extendArm(-0.45);
-        }
-        else if (ERArm <= -124 && ERArm >= -127) {
-          ControlMotors.extendArm(0);
-          step2 = true;
+      {
+      if(ControlMotors.moveArmTo(325, -155))
+        {
+          //Arm in position
+          step0 = false;
+          step1 = true;                   
         }
       }
       // Open Claw to drop Cone
-      if (step2 == true) {
+      if (step1) {
         pneumatics.openClaw();
-        step3 = true;
+        step1 = false;
+        step2 = true;
       }
       // Retract Arm back to starting position
-      if (step3 == true) {
-        if (ERArm <= -125 && ERArm >= -130) {
-          ControlMotors.extendArm(0.45);
+      if (step2) {
+        if (ERArm <= SCORING_POSITIONS_ER.DEFAULT_POSITION) {
+          ControlMotors.extendArm(0.85);
         }
-        else if (ERArm == 1 && ERArm >= -3) {
+        else {
           ControlMotors.extendArm(0);
-          step4 = true;
+          step2 = false;
+          navx.ahrs.reset();
+          step3 = true;
         }
       }
       // Start Driving back while lowering and reversing arm position
-      if (step4 == true) {
-        if (HlArm != -315 && HlArm >= -315) {
-          ControlMotors.moveArm(-1);
+      if (step3) {
+        if((DriveEncoder1 >= PREFFEREDAUTO.MOVE_BACK_POINT1) && (DriveEncoder2 <= PREFFEREDAUTO.MOVE_BACK_POINT2)) {
+          SmartDashboard.putNumber("Yaw", navx.getYawMotion());
+          ControlMotors.driveBackStraight(navx.getYawMotion());
         }
-        else if (HlArm <= -315 && HlArm >= -318) {
-          ControlMotors.moveArm(0);
+        else if ((DriveEncoder1 <= PREFFEREDAUTO.MOVE_BACK_STOP_POINT1) && (DriveEncoder2 >= PREFFEREDAUTO.MOVE_BACK_STOP_POINT2)){
+          ControlMotors.Drive(0, 0);
+          step3 = false;
+          navx.ahrs.reset();
+          step4 = true;
         }
-        if ((DriveEncoder1 != -86 && DriveEncoder1 >= -86) && (DriveEncoder2 != 86 && DriveEncoder2 <= 86)) {
-          ControlMotors.driveBack();
+        // if (HlArm >= -200) {
+        //   ControlMotors.moveArm(-1);
+        // }
+        // else if (HlArm <= -200) {
+        //   ControlMotors.moveArm(0);
+        // }
+      }
+      if (step4) {
+        ControlMotors.moveArm(0);
+        if ((DriveEncoder1 <= PREFFEREDAUTO.MOVE_FORWARD_POINT1) && (DriveEncoder2 >= PREFFEREDAUTO.MOVE_FORWARD_POINT2)) {
+          ControlMotors.driveForwardStraight(navx.getYawMotion());
         }
-        else if ((DriveEncoder1 <= -85 && DriveEncoder1 >= -88) && (DriveEncoder2 >= 85 && DriveEncoder2 <= 88)) {
-          ControlMotors.stopDrive();
+        else if ((DriveEncoder1 >= -38) && (DriveEncoder2 <= 38)) {
+          ControlMotors.Drive(0, 0);
+          step4 = false;
           step5 = true;
         }
       }
-      if (step5 == true) {
-        if ((DriveEncoder1 != -36 && DriveEncoder1 <= -36) && (DriveEncoder2 != 36 && DriveEncoder2 >= 36)) {
-          ControlMotors.driveForward();
+      if (step5) {
+        double roll = navx.getRollMotion();
+        SmartDashboard.putNumber("Roll", navx.getRollMotion());
+        if(roll <= -20.0) 
+        {
+          ControlMotors.autoBalanceForward();
         }
-        else if ((DriveEncoder1 <= -35 && DriveEncoder1 >= -38) && (DriveEncoder2 >= 35 && DriveEncoder2 <= 38)) {
-          ControlMotors.stopDrive();
+        else if (roll >= 20.0)
+        {
+          ControlMotors.autoBalanceBackward();
         }
-      }
+        else if ((roll <= 20.0) && (roll >= -20.0)) 
+        {
+          ControlMotors.Drive(0, 0);
+          // step6 = false;
+        }
+        if (ControlMotors.isArmMoving() == false && ControlMotors.isDriveMoving() == false);
+        }
       break;
       case a1:
         // Lower Arm to placing point
@@ -390,9 +454,6 @@ public class Robot extends TimedRobot {
     }
   }
 
-
-  private int firsthue = 0;
-
   private void rainbow() {
     // For every pixel
     for (var i = 0; i < robot_leds_buffer.getLength(); i++) {
@@ -407,7 +468,41 @@ public class Robot extends TimedRobot {
     // Check bounds
     firsthue %= 180;
   }
+  private void updateLimelightTracking() {
+    final double STEER_K = ControlMotors.STEER_K;            // how hard to turn toward the target
+    final double DRIVE_K = ControlMotors.DRIVE_K;            // how hard to drive fwd toward the target
+    final double DESIRED_TARGET_AREA = ControlMotors.DESIRED_TARGET_AREA;       // Area of the target when the robot reaches the wall
+    final double MAX_DRIVE = ControlMotors.MAX_DRIVE;
+    
+    double tv = limeLight.getTV();
+    double tx = limeLight.getTX();
+    double ty = limeLight.getTY();
+    double ta = limeLight.getTA();
 
+    if (tv < 1.0)
+    {
+      m_LimelightHasValidTarget = false;
+      m_LimelightDriveCommand = 0.0;
+      m_LimelightSteerCommand = 0.0;
+      return;
+    }
+
+    m_LimelightHasValidTarget = true;
+
+    // Start with proportional steering
+    double steer_cmd = tx * STEER_K;
+    m_LimelightSteerCommand = steer_cmd;
+
+    // try to drive forward until the target area reaches our desired area
+    double drive_cmd = (DESIRED_TARGET_AREA - ta) * DRIVE_K;
+
+    // don't let the robot drive too fast into the goal
+    if (drive_cmd > MAX_DRIVE)
+    {
+      drive_cmd = MAX_DRIVE;
+    }
+    m_LimelightDriveCommand = drive_cmd;
+  }
 
   /** This function is called once when the robot is first started up. */
   public double checkDeadband(double input)
