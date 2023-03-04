@@ -36,6 +36,7 @@ public class Robot extends TimedRobot {
   public RobotContainer m_robotContainer;
   public AddressableLED robot_leds;
   public AddressableLEDBuffer robot_leds_buffer;
+  public AddressableLEDBuffer robot_leds_buffer_1;
   private Joystick Usb1 = new Joystick(OperatorConstants.kUsbController1);
   private Joystick Usb2 = new Joystick(OperatorConstants.kUsbController2);
   private double DriveXValue;
@@ -65,10 +66,6 @@ public class Robot extends TimedRobot {
   private boolean DriverControl = true;
   private boolean autoAligning = false;
   public boolean isBalanced = true;
-  private boolean auto = controller.getAButton();
-  private boolean m_LimelightHasValidTarget = false;
-  private double m_LimelightDriveCommand = 0.0;
-  private double m_LimelightSteerCommand = 0.0;
   private static final String a0 = "Preffered Position";
   private static final String a1 = "Secondary Position";
   private String autonModeSelected;
@@ -86,6 +83,7 @@ public class Robot extends TimedRobot {
     ControlMotors.setBrakeIdle();
     pneumatics.enableCompressor();
     limeLight.initiateLimelight();
+    pneumatics.closeClaw();
     SmartDashboard.putNumber("Roll", navx.getRollMotion());
     SmartDashboard.putNumber("Pitch", navx.getPitchMotion());
     SmartDashboard.putNumber("Yaw", navx.getYawMotion());
@@ -101,6 +99,14 @@ public class Robot extends TimedRobot {
     auton_chooser.addOption("Secondary Auto", a1);
     SmartDashboard.putData(auton_chooser);
     ControlMotors.resetAllAutonEncoders();
+  }
+  @Override
+  public void disabledInit() {
+    pneumatics.closeClaw();
+  }
+  @Override
+  public void disabledPeriodic() {
+    // pneumatics.closeClaw();
   }
 
   @Override
@@ -175,26 +181,26 @@ public class Robot extends TimedRobot {
       robot_leds.setData(robot_leds_buffer);
     }
     /* ----------------------------------------------------------------------------------------------------- */
-    if (Usb2.getRawButtonPressed(3)) {
-      autoAligning = true;
-    }
-    if (autoAligning) {
-      DriverControl = false;
-      SmartDashboard.putString("Driver Control", "False");
-      zDistance = limeLight.getZDistance();
-      if(zDistance < -0.58)
-      {
-        ControlMotors.driveToZ();
-      }
-      else
-      { 
-        ControlMotors.Drive(0, 0);
-        DriverControl = true;
-        SmartDashboard.putString("Driver Control", "True");
-        autoAligning = false;
-        // controller.setRumble(RumbleType.kBothRumble, 1);
-      }
-    }
+    // if (Usb2.getRawButtonPressed(3)) {
+    //   autoAligning = true;
+    // }
+    // if (autoAligning) {
+    //   DriverControl = false;
+    //   SmartDashboard.putString("Driver Control", "False");
+    //   zDistance = limeLight.getZDistance();
+    //   if(zDistance < -0.58)
+    //   {
+    //     ControlMotors.driveToZ();
+    //   }
+    //   else
+    //   { 
+    //     ControlMotors.Drive(0, 0);
+    //     DriverControl = true;
+    //     SmartDashboard.putString("Driver Control", "True");
+    //     autoAligning = false;
+    //     // controller.setRumble(RumbleType.kBothRumble, 1);
+    //   }
+    // }
     if (Usb2.getRawButtonPressed(4)) {
       autoAligning = false;
       SmartDashboard.putString("Driver Control", "True");
@@ -229,9 +235,9 @@ public class Robot extends TimedRobot {
       DriverControl = true;
     }
     // TEMPORARY //
-    if (controller.getAButtonPressed()) {
-      ControlMotors.resetAllAutonEncoders();
-    }
+    // if (controller.getAButtonPressed()) {
+    //   ControlMotors.resetAllAutonEncoders();
+    // }
     // TEMPORARY //
 
     if ((DriverControl)) 
@@ -243,22 +249,23 @@ public class Robot extends TimedRobot {
         ControlMotors.extendArm(arm2);
       }  
       SmartDashboard.putString("Driver Control", "True");
-      //controller.setRumble(RumbleType.kBothRumble, 0);
       ControlMotors.Drive(DriveXValue, DriveYValue);
       ControlMotors.moveArm(ArmSpeed);
       if (controller.getYButtonReleased()) {presettingArm = false;}
       if (controller.getBButtonReleased()) {presettingArm = false;}
       if (controller.getAButtonReleased()) {presettingArm = false;}
       if (controller.getXButtonReleased()) {presettingArm = false;}
-
       settingY = controller.getYButton();
       settingB = controller.getBButton();
-
+      settingA = controller.getAButton();
       if (settingY) {
         presetY();
       }
       if (settingB) {
         presetB();
+      }
+      if (settingA) {
+        presetA();
       }
     }
 
@@ -266,21 +273,20 @@ public class Robot extends TimedRobot {
   }
 
   public void presetY() {
+    presettingArm = true;
     if (ControlMotors.moveArmTo(325, -155) && presettingArm) {
       presettingArm = false;
     }
   }
   public void presetB() {
     presettingArm = true;
-    if (HlArm <= 120.5 && presettingArm) {
-      ControlMotors.moveArm(1);
-    } else {
-      ControlMotors.moveArm(0);
+    if (ControlMotors.moveArmTo(350, -71)) {
+      presettingArm = false;
     }
-    if (ERArm >= -90 && presettingArm) {
-      ControlMotors.extendArm(-0.85);
-    } else {
-      ControlMotors.extendArm(0);
+  }
+  public void presetA() {
+    presettingArm = true;
+    if (ControlMotors.moveArmTo(496, -2.5)) {
       presettingArm = false;
     }
   }
@@ -310,9 +316,8 @@ public class Robot extends TimedRobot {
 
     switch (autonModeSelected) {
       case a0:
-      if (step0)
+      if (step0) {
       // Lower Arm to placing point
-      {
       if(ControlMotors.moveArmTo(325, -155))
         {
           //Arm in position
@@ -389,68 +394,59 @@ public class Robot extends TimedRobot {
       break;
       case a1:
         // Lower Arm to placing point
-        if(step0)
+      if(step0) {
+        if(ControlMotors.moveArmTo(325, -155))
         {
-          if (HlArm <= 142.5) {
-            ControlMotors.moveArm(1);
-          } else {
-            ControlMotors.moveArm(0);
-            step0 = false;
-            step1 = true;
-          }
+          //Arm in position
+          step0 = false;
+          step1 = true;                   
         }
-        
-        // Extend Arm to dropping height
-        if (step1) {
-          if (ERArm >= -125) {
-            ControlMotors.extendArm(-0.45);
-          }
-          else {
-            ControlMotors.extendArm(0);
-            step1 = false;
-            step2 = true;
-          }
+      }
+      // Extend Arm to dropping height
+      if (step1) {
+        pneumatics.openClaw();
+        step1 = false;
+        step2 = true;
+      }
+      // Open Claw to drop Cone
+      if (step2) {
+        if (ERArm <= SCORING_POSITIONS_ER.DEFAULT_POSITION) {
+          ControlMotors.extendArm(0.85);
         }
-
-        // Open Claw to drop Cone
-        if (step2) {
-          pneumatics.openClaw();
+        else {
+          ControlMotors.extendArm(0);
           step2 = false;
+          navx.ahrs.reset();
           step3 = true;
         }
-
-        // Retract Arm back to starting position
-        if (step3) {
-          if (ERArm <= -5) {
-            ControlMotors.extendArm(0.45);
-          }
-          else {
-            ControlMotors.extendArm(0);
-            step3 = false;
-            navx.ahrs.reset();
-            step4 = true;
-          }
+      }
+      // Retract Arm back to starting position
+      if (step3) {
+        if (ERArm <= -5) {
+          ControlMotors.extendArm(0.45);
         }
-        // Start Driving back while lowering and reversing arm position
-        if (step4) {
-          if ((DriveEncoder1 >= -78) && (DriveEncoder2 <= 78)) {
-            //ControlMotors.driveBack();
-            SmartDashboard.putNumber("Yaw", navx.getYawMotion());
-            ControlMotors.driveBackStraight(navx.getYawMotion());
-          }
-          else if ((DriveEncoder1 <= -78) && (DriveEncoder2 >= 78)) {
-            ControlMotors.Drive(0, 0);
-          }
-          
-          if (HlArm >= -315) {
-            ControlMotors.moveArm(-1);
-          }
-          else if (HlArm <= -315) {
-            ControlMotors.moveArm(0);
-          }
-
-          if (ControlMotors.isArmMoving() == false && ControlMotors.isDriveMoving() == false);
+        else {
+          ControlMotors.extendArm(0);
+          step3 = false;
+          navx.ahrs.reset();
+          step4 = true;
         }
+      }
+      // Start Driving back while lowering and reversing arm position
+      if (step4) {
+        if ((DriveEncoder1 >= -78) && (DriveEncoder2 <= 78)) {
+          //ControlMotors.driveBack();
+          SmartDashboard.putNumber("Yaw", navx.getYawMotion());
+          ControlMotors.driveBackStraight(navx.getYawMotion());
+        }
+        else if ((DriveEncoder1 <= -78) && (DriveEncoder2 >= 78)) {
+          ControlMotors.Drive(0, 0);
+        }
+        if (ControlMotors.moveArmTo(-630, 0)) {
+         step4 = false;
+        }
+        if (ControlMotors.isArmMoving() == false && ControlMotors.isDriveMoving() == false);
+      }
     }
   }
 
@@ -468,41 +464,6 @@ public class Robot extends TimedRobot {
     // Check bounds
     firsthue %= 180;
   }
-  private void updateLimelightTracking() {
-    final double STEER_K = ControlMotors.STEER_K;            // how hard to turn toward the target
-    final double DRIVE_K = ControlMotors.DRIVE_K;            // how hard to drive fwd toward the target
-    final double DESIRED_TARGET_AREA = ControlMotors.DESIRED_TARGET_AREA;       // Area of the target when the robot reaches the wall
-    final double MAX_DRIVE = ControlMotors.MAX_DRIVE;
-    
-    double tv = limeLight.getTV();
-    double tx = limeLight.getTX();
-    double ty = limeLight.getTY();
-    double ta = limeLight.getTA();
-
-    if (tv < 1.0)
-    {
-      m_LimelightHasValidTarget = false;
-      m_LimelightDriveCommand = 0.0;
-      m_LimelightSteerCommand = 0.0;
-      return;
-    }
-
-    m_LimelightHasValidTarget = true;
-
-    // Start with proportional steering
-    double steer_cmd = tx * STEER_K;
-    m_LimelightSteerCommand = steer_cmd;
-
-    // try to drive forward until the target area reaches our desired area
-    double drive_cmd = (DESIRED_TARGET_AREA - ta) * DRIVE_K;
-
-    // don't let the robot drive too fast into the goal
-    if (drive_cmd > MAX_DRIVE)
-    {
-      drive_cmd = MAX_DRIVE;
-    }
-    m_LimelightDriveCommand = drive_cmd;
-  }
 
   /** This function is called once when the robot is first started up. */
   public double checkDeadband(double input)
@@ -514,44 +475,14 @@ public class Robot extends TimedRobot {
     return 0;
   }
  
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
   /** This function is called once each time the robot enters Disabled mode. */
   @Override
-  public void disabledInit() {}
-
-  @Override
-  public void disabledPeriodic() {}
-
-  @Override
   public void testInit() {CommandScheduler.getInstance().cancelAll();}
-
   /** This function is called periodically during test mode. */
   @Override
-  public void testPeriodic() {
-  }
-
+  public void testPeriodic() {}
   @Override
   public void simulationInit() {}
-
   /** This function is called periodically whilst in simulation. */
   @Override
   public void simulationPeriodic() {}

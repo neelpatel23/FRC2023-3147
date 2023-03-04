@@ -8,7 +8,6 @@ import edu.wpi.first.wpilibj.DoubleSolenoid.Value;
 import frc.robot.Constants.HardwareCAN;
 import frc.robot.Constants.PneumaticChannels;
 
-
 public class Pneumatics {
     public Compressor comp = new Compressor(
         HardwareCAN.PneumaticHUB, 
