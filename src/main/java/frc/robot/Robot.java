@@ -1,5 +1,7 @@
 package frc.robot;
 
+import java.time.Period;
+
 import edu.wpi.first.wpilibj.AddressableLED;
 import edu.wpi.first.wpilibj.AddressableLEDBuffer;
 // User Controls
@@ -70,6 +72,7 @@ public class Robot extends TimedRobot {
   private static final String a1 = "Secondary Position";
   private String autonModeSelected;
   private final SendableChooser<String> auton_chooser = new SendableChooser<>();
+  private double PeriodicCounter = 0;
 
 
   @Override
@@ -90,9 +93,8 @@ public class Robot extends TimedRobot {
     SmartDashboard.putNumber("Extend Speed", .3);
     SmartDashboard.putString("Drive Mode", "Brake");
     SmartDashboard.putString("Driver Control", "True");
-    SmartDashboard.putNumber("Drive Speed", .90);
+    SmartDashboard.putNumber("Drive Speed", 0.80);
     SmartDashboard.putBoolean("LEDS", true);
-    pneumatics.closeClaw();
     // AUTON MODES
     auton_chooser.setDefaultOption("Preferred Auto", a0);
     auton_chooser.addOption("Preferred Auto", a0);
@@ -103,10 +105,12 @@ public class Robot extends TimedRobot {
   @Override
   public void disabledInit() {
     pneumatics.closeClaw();
+    pdh.setSwitchableChannel(true);
   }
   @Override
   public void disabledPeriodic() {
-    // pneumatics.closeClaw();
+    rainbow();
+    robot_leds.setData(robot_leds_buffer);
   }
 
   @Override
@@ -120,7 +124,15 @@ public class Robot extends TimedRobot {
   }
 
   @Override
-  public void teleopInit() {}
+  public void teleopInit() {
+    for (var i = 0; i < robot_leds_buffer.getLength(); i++) {
+      robot_leds_buffer.setRGB(i, 0, 0, 0);
+    }
+    robot_leds.setData(robot_leds_buffer);
+    pdh.setSwitchableChannel(false);
+    ControlMotors.m_drive.setMaxOutput(SmartDashboard.getNumber("Drive Speed", 0));
+
+  }
 
   /** This function is called periodically during operator control. */
   @Override
@@ -258,6 +270,7 @@ public class Robot extends TimedRobot {
       settingY = controller.getYButton();
       settingB = controller.getBButton();
       settingA = controller.getAButton();
+      settingX = controller.getXButton();
       if (settingY) {
         presetY();
       }
@@ -267,6 +280,10 @@ public class Robot extends TimedRobot {
       if (settingA) {
         presetA();
       }
+      if (settingX) {
+        presetX();
+      }
+
     }
 
     SmartDashboard.putNumber("ArmEncoder2", ControlMotors.armEncoder.getDistance());
@@ -290,10 +307,22 @@ public class Robot extends TimedRobot {
       presettingArm = false;
     }
   }
+  public void presetX() {
+    presettingArm = true;
+    if (ControlMotors.moveArmTo(355, -53)) {
+      presettingArm = false;
+    }
+  }
     
   @Override
   public void autonomousInit() { 
     autonModeSelected = auton_chooser.getSelected();
+    for (var i = 0; i < robot_leds_buffer.getLength(); i++) {
+      robot_leds_buffer.setRGB(i, 0, 0, 0);
+    }
+    robot_leds.setData(robot_leds_buffer);
+    pdh.setSwitchableChannel(false);
+    PeriodicCounter = 0;
   }
 
   /** This function is called periodically during autonomous. */
@@ -314,11 +343,14 @@ public class Robot extends TimedRobot {
     SmartDashboard.putBoolean("Step6", step6);
     SmartDashboard.putBoolean("Step7", step7);
 
+    double roll = navx.getRollMotion();
+    SmartDashboard.putNumber("Roll", navx.getRollMotion());
+
     switch (autonModeSelected) {
       case a0:
       if (step0) {
       // Lower Arm to placing point
-      if(ControlMotors.moveArmTo(325, -155))
+        if(ControlMotors.moveArmTo(335, -155))
         {
           //Arm in position
           step0 = false;
@@ -326,10 +358,20 @@ public class Robot extends TimedRobot {
         }
       }
       // Open Claw to drop Cone
+      SmartDashboard.putNumber("PeriodicCounter", PeriodicCounter);
       if (step1) {
-        pneumatics.openClaw();
-        step1 = false;
-        step2 = true;
+        PeriodicCounter += getPeriod();
+        if(PeriodicCounter > 0.5) 
+        {
+          pneumatics.openClaw();
+        }
+        
+        if(PeriodicCounter > 1.25)
+        {
+          step1 = false;
+          step2 = true;
+          step3 = true;
+        }
       }
       // Retract Arm back to starting position
       if (step2) {
@@ -349,53 +391,50 @@ public class Robot extends TimedRobot {
           SmartDashboard.putNumber("Yaw", navx.getYawMotion());
           ControlMotors.driveBackStraight(navx.getYawMotion());
         }
-        else if ((DriveEncoder1 <= PREFFEREDAUTO.MOVE_BACK_STOP_POINT1) && (DriveEncoder2 >= PREFFEREDAUTO.MOVE_BACK_STOP_POINT2)){
-          ControlMotors.Drive(0, 0);
+        else {
+          ControlMotors.stopDrive();
           step3 = false;
           navx.ahrs.reset();
           step4 = true;
         }
-        // if (HlArm >= -200) {
-        //   ControlMotors.moveArm(-1);
-        // }
-        // else if (HlArm <= -200) {
-        //   ControlMotors.moveArm(0);
-        // }
       }
       if (step4) {
         ControlMotors.moveArm(0);
         if ((DriveEncoder1 <= PREFFEREDAUTO.MOVE_FORWARD_POINT1) && (DriveEncoder2 >= PREFFEREDAUTO.MOVE_FORWARD_POINT2)) {
           ControlMotors.driveForwardStraight(navx.getYawMotion());
         }
-        else if ((DriveEncoder1 >= -38) && (DriveEncoder2 <= 38)) {
-          ControlMotors.Drive(0, 0);
+        //if(roll <= 15 || roll >= -15)
+        //{
+        //  ControlMotors.driveForwardStraight(navx.getYawMotion());
+        //}
+        else {
+          ControlMotors.stopDrive();
           step4 = false;
           step5 = true;
         }
       }
       if (step5) {
-        double roll = navx.getRollMotion();
+        roll = navx.getRollMotion();
         SmartDashboard.putNumber("Roll", navx.getRollMotion());
-        if(roll <= -20.0) 
+        if(roll <= -10.0) 
         {
           ControlMotors.autoBalanceForward();
         }
-        else if (roll >= 20.0)
+        else if (roll >= 10.0)
         {
           ControlMotors.autoBalanceBackward();
         }
-        else if ((roll <= 20.0) && (roll >= -20.0)) 
+        else if ((roll <= 10.0) && (roll >= -10.0)) 
         {
-          ControlMotors.Drive(0, 0);
+          ControlMotors.stopDrive();
           // step6 = false;
         }
-        if (ControlMotors.isArmMoving() == false && ControlMotors.isDriveMoving() == false);
-        }
+      }
       break;
       case a1:
         // Lower Arm to placing point
       if(step0) {
-        if(ControlMotors.moveArmTo(325, -155))
+        if(ControlMotors.moveArmTo(335, -155))
         {
           //Arm in position
           step0 = false;
@@ -404,9 +443,17 @@ public class Robot extends TimedRobot {
       }
       // Extend Arm to dropping height
       if (step1) {
-        pneumatics.openClaw();
-        step1 = false;
-        step2 = true;
+        PeriodicCounter += getPeriod();
+        if(PeriodicCounter > 0.5) 
+        {
+          pneumatics.openClaw();
+        }
+        
+        if(PeriodicCounter > 1.25)
+        {
+          step1 = false;
+          step2 = true;
+        }
       }
       // Open Claw to drop Cone
       if (step2) {
@@ -439,13 +486,15 @@ public class Robot extends TimedRobot {
           SmartDashboard.putNumber("Yaw", navx.getYawMotion());
           ControlMotors.driveBackStraight(navx.getYawMotion());
         }
-        else if ((DriveEncoder1 <= -78) && (DriveEncoder2 >= 78)) {
-          ControlMotors.Drive(0, 0);
+        else {
+          ControlMotors.stopDrive();
+          step4 = false;
         }
-        if (ControlMotors.moveArmTo(-630, 0)) {
-         step4 = false;
-        }
-        if (ControlMotors.isArmMoving() == false && ControlMotors.isDriveMoving() == false);
+
+        //if (ControlMotors.moveArmTo(-630, 0)) {
+        // step4 = false;
+        //}
+        //if (ControlMotors.isArmMoving() == false && ControlMotors.isDriveMoving() == false);
       }
     }
   }

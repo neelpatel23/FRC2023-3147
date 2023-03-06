@@ -17,7 +17,7 @@ public final class Constants {
   public static class ArmMotors {
     public static final int CANID5 = 5;
     public static final int CANID6 = 6;
-    public static final int LIMIT = 620;
+    public static final int LIMIT = 650;
     public static final int LOWANGLE = 180;
     public static final int HIGHANGLE = 340;
   }
@@ -46,10 +46,10 @@ public final class Constants {
   public static class PREFFEREDAUTO {
     public static final double MOVE_BACK_POINT1 = -77;
     public static final double MOVE_BACK_POINT2 = 77;
-    public static final double MOVE_BACK_STOP_POINT1 = -72;
-    public static final double MOVE_BACK_STOP_POINT2 = 72;
-    public static final double MOVE_FORWARD_POINT1 = -38;
-    public static final double MOVE_FORWARD_POINT2 = 38;
+    // public static final double MOVE_BACK_STOP_POINT1 = -78;
+    // public static final double MOVE_BACK_STOP_POINT2 = 72;
+    public static final double MOVE_FORWARD_POINT1 = -35;
+    public static final double MOVE_FORWARD_POINT2 = 35;
   }
 
   public static double DEADBAND = .2;

@@ -73,9 +73,10 @@ public class ControlMotors {
         m_drive.tankDrive(0.35, -0.35);
     } 
     public void driveBackStraight(double Yaw) {
+        m_drive.setMaxOutput(.9);
         if(Yaw < -.5)
         {
-            m_drive.tankDrive(-0.4725, 0.5);
+            m_drive.tankDrive(-0.4725, 0.50);
         }
         else if(Yaw > .5)
         {
@@ -83,18 +84,19 @@ public class ControlMotors {
         }
         else 
         {
-            m_drive.tankDrive(-0.50, 0.5);
+            m_drive.tankDrive(-0.50, 0.50);
         }
     }
     public void driveForwardStraight(double Yaw) {
+        m_drive.setMaxOutput(.9);
         if(Yaw < -.5){
-            m_drive.tankDrive(0.5, -0.4725);
+            m_drive.tankDrive(0.60, -0.5725);
         }
         else if (Yaw > .5){
-            m_drive.tankDrive(0.4725, -0.5);
+            m_drive.tankDrive(0.5725, -0.60);
         }
         else {
-            m_drive.tankDrive(0.5,-0.5);
+            m_drive.tankDrive(0.60,-0.60);
         }
     }
 
@@ -106,10 +108,10 @@ public class ControlMotors {
     }
     
     public void autoBalanceForward() {
-        m_drive.tankDrive(0.10, -0.10, false);
+        m_drive.tankDrive(0.15, -0.15, false);
     }
     public void autoBalanceBackward() {
-        m_drive.tankDrive(-0.10, 0.10, false);
+        m_drive.tankDrive(-0.15, 0.15, false);
     }
     public void balanceDrive(double left, double right) {
         m_drive.tankDrive(left, right);
@@ -152,9 +154,6 @@ public class ControlMotors {
         }
        
     }
-    //public void controlArm(double speed) {
-    //    arm_extend.set(speed * SmartDashboard.getNumber("ExtendSpeed", speed));
-    //}
 
     public boolean isArmMoving() {
         return (arm_extend.get() == 0);
@@ -283,8 +282,8 @@ public class ControlMotors {
     {
         double armEncoderValue = armEncoder.getDistance();
         double armExtend = arm_extend.getEncoder().getPosition();
-        double rotateSpeed = 1;
-        double extendSpeed = 1;
+        double rotateSpeed = 0.5;
+        double extendSpeed = 0.75;
         SmartDashboard.putNumber("ArmEncoder2", armEncoderValue);
         SmartDashboard.putNumber(("Rotate"), Rotate);
 
@@ -303,7 +302,7 @@ public class ControlMotors {
 
         if(Math.abs(Extend - armExtend) < 15)
         {
-            extendSpeed = .20;
+            extendSpeed = .35;
         }
 
         if(armEncoderValue > Rotate - 5)
