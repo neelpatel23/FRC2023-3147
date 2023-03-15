@@ -7,6 +7,7 @@ import edu.wpi.first.wpilibj.AddressableLEDBuffer;
 // User Controls
 import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.PowerDistribution;
+import edu.wpi.first.cameraserver.CameraServer;
 // FRC
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.XboxController;
@@ -77,6 +78,7 @@ public class Robot extends TimedRobot {
 
   @Override
   public void robotInit() {
+    CameraServer.startAutomaticCapture();
     pdh.clearStickyFaults();
     robot_leds = new AddressableLED(0);
     robot_leds_buffer = new AddressableLEDBuffer(135);
