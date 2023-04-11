@@ -27,6 +27,10 @@ public final class Constants {
     public static final int LIMITRETRACT = -5;
     public static final int LIMITANGLE = -80;
   }
+  public static class Intake {
+    public static final int CANID8 = 8;
+  }
+  
   public static class HardwareCAN {
     // Hardware CANiDs
     public static final int PDU = 10;

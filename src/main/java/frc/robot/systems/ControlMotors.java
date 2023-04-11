@@ -7,6 +7,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.Constants;
 import frc.robot.Constants.ArmExtend;
 import frc.robot.Constants.ArmMotors;
+import frc.robot.Constants.Intake;
 import frc.robot.Constants.Motors;
 
 import com.revrobotics.CANSparkMax;
@@ -23,6 +24,7 @@ public class ControlMotors {
     public CANSparkMax arm_left = new CANSparkMax(ArmMotors.CANID5, MotorType.kBrushless);
     public CANSparkMax arm_right = new CANSparkMax(ArmMotors.CANID6, MotorType.kBrushless);
     public CANSparkMax arm_extend = new CANSparkMax(ArmExtend.CANID7, MotorType.kBrushless);
+    // public CANSparkMax intake = new CANSparkMax(Intake.CANID8, MotorType.kBrushless);
     // Controller Groups
     public MotorControllerGroup m_left = new MotorControllerGroup(m_leftFront, m_leftRear);
     public MotorControllerGroup m_right = new MotorControllerGroup(m_rightFront, m_rightRear);
@@ -76,15 +78,15 @@ public class ControlMotors {
         m_drive.setMaxOutput(.9);
         if(Yaw < -.5)
         {
-            m_drive.tankDrive(-0.4725, 0.50);
+            m_drive.tankDrive(-0.5325, 0.55);
         }
         else if(Yaw > .5)
         {
-            m_drive.tankDrive(-0.50, 0.4725);
+            m_drive.tankDrive(-0.55, 0.5325);
         }
         else 
         {
-            m_drive.tankDrive(-0.50, 0.50);
+            m_drive.tankDrive(-0.55, 0.55);
         }
     }
     public void driveForwardStraight(double Yaw) {
@@ -108,10 +110,10 @@ public class ControlMotors {
     }
     
     public void autoBalanceForward() {
-        m_drive.tankDrive(0.15, -0.15, false);
+        m_drive.tankDrive(0.125, -0.125, false);
     }
     public void autoBalanceBackward() {
-        m_drive.tankDrive(-0.15, 0.15, false);
+        m_drive.tankDrive(-0.125, 0.125, false);
     }
     public void balanceDrive(double left, double right) {
         m_drive.tankDrive(left, right);
@@ -332,4 +334,7 @@ public class ControlMotors {
         return false;
     }
 
+    // public void setIntake (double speed) {
+    //     intake.set(speed);
+    // }
 }

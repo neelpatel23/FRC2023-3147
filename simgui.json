@@ -28,9 +28,20 @@
     }
   },
   "NetworkTables": {
+    "Persistent Values": {
+      "open": false
+    },
+    "Retained Values": {
+      "open": false
+    },
     "transitory": {
-      "SmartDashboard": {
+      "FMSInfo": {
         "open": true
+      },
+      "SmartDashboard": {
+        "SendableChooser[0]": {
+          "open": true
+        }
       }
     }
   },
@@ -44,8 +55,5 @@
     "Server": {
       "open": true
     }
-  },
-  "NetworkTables View": {
-    "visible": false
   }
 }

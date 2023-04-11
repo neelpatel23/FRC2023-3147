@@ -1,7 +1,5 @@
 package frc.robot;
 
-import java.time.Period;
-
 import edu.wpi.first.wpilibj.AddressableLED;
 import edu.wpi.first.wpilibj.AddressableLEDBuffer;
 // User Controls
@@ -14,6 +12,8 @@ import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.PowerDistribution.ModuleType;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import edu.wpi.first.wpilibj.util.Color;
+import edu.wpi.first.wpilibj.util.Color8Bit;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 // Constants
 import frc.robot.Constants.HardwareCAN;
@@ -49,7 +49,6 @@ public class Robot extends TimedRobot {
   private double HlArm;
   private double ERArm;
   private double ArmSpeed;
-  private double zDistance;
   private double arm;
   private double arm2;
   private boolean step0 = true;
@@ -165,22 +164,32 @@ public class Robot extends TimedRobot {
     */
     if (controller.getRightBumperPressed()) {pneumatics.closeClaw();}
     if (controller.getLeftBumperPressed()) {pneumatics.openClaw();}
-    if (Usb1.getRawButtonPressed(1)) {/* Driver Cam */ limeLight.setCurrentPipeline(0);}
-    if (Usb1.getRawButtonPressed(2)) {/* April Tag */ limeLight.setCurrentPipeline(1);}
-    if (Usb1.getRawButtonPressed(3)) {/* Retro-Reflective */ limeLight.setCurrentPipeline(2);}
-    if (Usb1.getRawButtonPressed(4)) {/* Yellow Cone */ limeLight.setCurrentPipeline(3);}
-    if (Usb1.getRawButtonPressed(5)) {/* Purple Cube */ limeLight.setCurrentPipeline(4);}
+
+    // if (controller.getRightBumper()) {
+    //   ControlMotors.setIntake(-0.75);
+    // }
+    // if (controller.getLeftBumper()) {
+    //   ControlMotors.setIntake(0.18);
+    // }
+    // if (controller.getRightBumperReleased()) {
+    //   ControlMotors.setIntake(0);
+    // }
+    // if (controller.getLeftBumperReleased()) {
+    //   ControlMotors.setIntake(0);
+    // }
     if (Usb2.getRawButtonPressed(1)) {ControlMotors.setBrakeMode() ; SmartDashboard.putString("Drive Mode", "Brake");}
     if (Usb2.getRawButtonPressed(2)) {ControlMotors.setCoastMode(); SmartDashboard.putString("Drive Mode", "Coast");}
-    if (Usb2.getRawButtonPressed(7)) {
+    // 8 = YELLOW LIGHTS
+    if (Usb2.getRawButtonPressed(8)) {
       for (var i = 0; i < robot_leds_buffer.getLength(); i++) {
-        robot_leds_buffer.setHSV(i, 0, 255, 255);
+        robot_leds_buffer.setLED(i, Color.kYellow);
       }
       robot_leds.setData(robot_leds_buffer);
     }
-    if (Usb2.getRawButtonPressed(8)) {
+    // 7 = PURPLE LIGHTS
+    if (Usb2.getRawButtonPressed(7)) {
       for (var i = 0; i < robot_leds_buffer.getLength(); i++) {
-        robot_leds_buffer.setHSV(i, 240, 100, 54);
+        robot_leds_buffer.setRGB(i, 75, 0, 130);
       }
       robot_leds.setData(robot_leds_buffer);
     }
@@ -189,6 +198,12 @@ public class Robot extends TimedRobot {
       robot_leds.setData(robot_leds_buffer);
     }
     if (Usb2.getRawButtonReleased(9)) {
+      for (var i = 0; i < robot_leds_buffer.getLength(); i++) {
+        robot_leds_buffer.setRGB(i, 0, 0, 0);
+      }
+      robot_leds.setData(robot_leds_buffer);
+    }
+    if (Usb2.getRawButtonPressed(9)) {
       for (var i = 0; i < robot_leds_buffer.getLength(); i++) {
         robot_leds_buffer.setRGB(i, 0, 0, 0);
       }
@@ -269,6 +284,11 @@ public class Robot extends TimedRobot {
       if (controller.getBButtonReleased()) {presettingArm = false;}
       if (controller.getAButtonReleased()) {presettingArm = false;}
       if (controller.getXButtonReleased()) {presettingArm = false;}
+      if (Usb1.getRawButtonReleased(1)) {presettingArm = false;}
+      if (Usb1.getRawButtonReleased(2)) {presettingArm = false;}
+      if (Usb1.getRawButtonReleased(3)) {presettingArm = false;}
+      if (Usb1.getRawButtonReleased(4)) {presettingArm = false;}
+      if (Usb1.getRawButtonReleased(5)) {presettingArm = false;}
       settingY = controller.getYButton();
       settingB = controller.getBButton();
       settingA = controller.getAButton();
@@ -285,15 +305,31 @@ public class Robot extends TimedRobot {
       if (settingX) {
         presetX();
       }
-
+      if (Usb1.getRawButton(1)) {
+        presettingArm = true;
+        if (ControlMotors.moveArmTo(203, -5)) {
+          presettingArm = false;
+        }
+      }
+      if (Usb1.getRawButton(2)) {
+        presetY();
+      }
+      if (Usb1.getRawButton(3)) {
+        presetB();
+      }
+      if (Usb1.getRawButton(4)) {
+        presetA();
+      }
+      if (Usb1.getRawButton(5)) {
+        presetX();
+      }
     }
-
     SmartDashboard.putNumber("ArmEncoder2", ControlMotors.armEncoder.getDistance());
   }
 
   public void presetY() {
     presettingArm = true;
-    if (ControlMotors.moveArmTo(325, -155) && presettingArm) {
+    if (ControlMotors.moveArmTo(325, -155)) {
       presettingArm = false;
     }
   }
@@ -492,7 +528,6 @@ public class Robot extends TimedRobot {
           ControlMotors.stopDrive();
           step4 = false;
         }
-
         //if (ControlMotors.moveArmTo(-630, 0)) {
         // step4 = false;
         //}
@@ -519,6 +554,7 @@ public class Robot extends TimedRobot {
   /** This function is called once when the robot is first started up. */
   public double checkDeadband(double input)
   {
+    // System.out.println("Checking Deadband");
     if(input >= Constants.DEADBAND || input <= -Constants.DEADBAND)
     {
       return input;
